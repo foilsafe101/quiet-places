@@ -2,13 +2,15 @@
 """
 fetch_flights.py - Quiet Places Project
 Fetches flight track data from OpenSky Network and appends to flights.json.
-Designed to run nightly via GitHub Actions (or cron).
+
+Set OPENSKY_USERNAME and OPENSKY_PASSWORD env vars for authenticated access
+(required for the /flights/all endpoint).
 
 Usage:
-    python fetch_flights.py                  # fetch last 24h, append to flights.json
-    python fetch_flights.py --hours 48       # fetch last 48h
-    python fetch_flights.py --prune-days 90  # also prune tracks older than 90 days
-    python fetch_flights.py --dry-run        # print stats without writing
+    python fetch_flights.py                  # fetch last 24h
+    python fetch_flights.py --hours 48
+    python fetch_flights.py --prune-days 90
+    python fetch_flights.py --dry-run
 """
 
 import argparse
@@ -24,9 +26,19 @@ import requests
 # Configuration
 # ---------------------------------------------------------------------------
 
-OPENSKY_FLIGHTS_URL  = "https://opensky-network.org/api/flights/all"
-OPENSKY_TRACK_URL    = "https://opensky-network.org/api/tracks/all"
-OUTPUT_FILE          = Path(__file__).parent / "docs" / "flights.json"
+OPENSKY_FLIGHTS_URL = "https://opensky-network.org/api/flights/all"
+OPENSKY_TRACK_URL   = "https://opensky-network.org/api/tracks/all"
+OUTPUT_FILE         = Path(__file__).parent / "docs" / "flights.json"
+
+# Read credentials from environment (set as GitHub Actions secrets)
+OPENSKY_AUTH = None
+_user = os.environ.get("OPENSKY_USERNAME")
+_pass = os.environ.get("OPENSKY_PASSWORD")
+if _user and _pass:
+    OPENSKY_AUTH = (_user, _pass)
+    print(f"Using authenticated OpenSky access as '{_user}'")
+else:
+    print("No OpenSky credentials found - unauthenticated access (limited)")
 
 BOUNDS = {
     "north_america": [15, 72, -170, -50],
@@ -35,9 +47,9 @@ BOUNDS = {
 }
 ACTIVE_BOUNDS = "global"
 
-SAMPLE_EVERY_N = 10
+SAMPLE_EVERY_N     = 10
 MAX_TRACKS_PER_RUN = 80
-WAYPOINT_STRIDE = 3
+WAYPOINT_STRIDE    = 3
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -84,17 +96,22 @@ def save(data, path, dry_run=False):
 # OpenSky API calls
 # ---------------------------------------------------------------------------
 
+def api_get(url, params, timeout=30):
+    """GET with optional auth and basic rate-limit retry."""
+    r = requests.get(url, params=params, auth=OPENSKY_AUTH, timeout=timeout)
+    if r.status_code == 429:
+        print("Rate limited - waiting 60s")
+        time.sleep(60)
+        r = requests.get(url, params=params, auth=OPENSKY_AUTH, timeout=timeout)
+    return r
+
 def get_flights(begin_ts, end_ts, bounds):
     min_lat, max_lat, min_lon, max_lon = bounds
     params = {"begin": begin_ts, "end": end_ts,
               "lamin": min_lat, "lamax": max_lat,
               "lomin": min_lon, "lomax": max_lon}
     print(f"Fetching flights {datetime.fromtimestamp(begin_ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC ...")
-    r = requests.get(OPENSKY_FLIGHTS_URL, params=params, timeout=30)
-    if r.status_code == 429:
-        print("Rate limited - waiting 60s")
-        time.sleep(60)
-        r = requests.get(OPENSKY_FLIGHTS_URL, params=params, timeout=30)
+    r = api_get(OPENSKY_FLIGHTS_URL, params)
     r.raise_for_status()
     flights = r.json() or []
     print(f"  -> {len(flights)} flights found")
@@ -102,16 +119,12 @@ def get_flights(begin_ts, end_ts, bounds):
 
 def get_track(icao24, begin_ts):
     params = {"icao24": icao24, "time": begin_ts}
-    r = requests.get(OPENSKY_TRACK_URL, params=params, timeout=15)
+    r = api_get(OPENSKY_TRACK_URL, params, timeout=15)
     if r.status_code in (404, 400):
         return None
-    if r.status_code == 429:
-        time.sleep(30)
-        r = requests.get(OPENSKY_TRACK_URL, params=params, timeout=15)
     if not r.ok:
         return None
-    data = r.json()
-    return data.get("path", [])
+    return r.json().get("path", [])
 
 # ---------------------------------------------------------------------------
 # Main
@@ -137,6 +150,7 @@ def main():
         flights = get_flights(begin_ts, end_ts, bounds)
     except requests.HTTPError as e:
         print(f"Failed to fetch flights: {e}")
+        print("Tip: Set OPENSKY_USERNAME and OPENSKY_PASSWORD for authenticated access.")
         return
 
     sampled = flights[::SAMPLE_EVERY_N][:MAX_TRACKS_PER_RUN]
@@ -152,7 +166,7 @@ def main():
         waypoints = get_track(icao24, begin)
 
         if not waypoints or len(waypoints) < 4:
-            print("skip (too short)")
+            print("skip")
             continue
 
         path = encode_path(simplify_track(waypoints))
