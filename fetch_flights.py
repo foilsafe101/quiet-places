@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
 fetch_flights.py - Quiet Places Project
-Fetches flight track data from OpenSky Network and appends to flights.json.
+Fetches recent aircraft positions from ADS-B Exchange and saves flight paths.
 
-Set OPENSKY_USERNAME and OPENSKY_PASSWORD env vars for authenticated access
-(required for the /flights/all endpoint).
+ADS-B Exchange works from GitHub Actions (unlike OpenSky which blocks cloud IPs).
+Get a free API key at: https://www.adsbexchange.com/data/
+
+Set ADSBX_API_KEY as a GitHub Actions secret.
 
 Usage:
-    python fetch_flights.py                  # fetch last 24h
-    python fetch_flights.py --hours 48
-    python fetch_flights.py --prune-days 90
-    python fetch_flights.py --dry-run
+    python fetch_flights.py                  # fetch current snapshot
+    python fetch_flights.py --prune-days 90  # prune tracks older than N days
+    python fetch_flights.py --dry-run        # print stats without writing
 """
 
 import argparse
@@ -26,30 +27,20 @@ import requests
 # Configuration
 # ---------------------------------------------------------------------------
 
-OPENSKY_FLIGHTS_URL = "https://opensky-network.org/api/flights/all"
-OPENSKY_TRACK_URL   = "https://opensky-network.org/api/tracks/all"
-OUTPUT_FILE         = Path(__file__).parent / "docs" / "flights.json"
+# ADS-B Exchange API - returns live aircraft positions
+ADSBX_URL    = "https://adsbexchange.com/api/aircraft/v2/all/"
+ADSBX_KEY    = os.environ.get("ADSBX_API_KEY", "")
 
-# Read credentials from environment (set as GitHub Actions secrets)
-OPENSKY_AUTH = None
-_user = os.environ.get("OPENSKY_USERNAME")
-_pass = os.environ.get("OPENSKY_PASSWORD")
-if _user and _pass:
-    OPENSKY_AUTH = (_user, _pass)
-    print(f"Using authenticated OpenSky access as '{_user}'")
-else:
-    print("No OpenSky credentials found - unauthenticated access (limited)")
+OUTPUT_FILE  = Path(__file__).parent / "docs" / "flights.json"
 
-BOUNDS = {
-    "north_america": [15, 72, -170, -50],
-    "europe":        [35, 72, -25,  45],
-    "global":        [-90, 90, -180, 180],
-}
-ACTIVE_BOUNDS = "global"
+# How many aircraft to sample per run (each becomes a short path segment)
+MAX_AIRCRAFT = 150
 
-SAMPLE_EVERY_N     = 10
-MAX_TRACKS_PER_RUN = 80
-WAYPOINT_STRIDE    = 3
+# Minimum altitude in feet - filter out ground vehicles etc.
+MIN_ALT_FT   = 1000
+
+# Prune default
+DEFAULT_PRUNE_DAYS = 180
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,24 +48,6 @@ WAYPOINT_STRIDE    = 3
 
 def ts_now():
     return int(datetime.now(timezone.utc).timestamp())
-
-def ts_hours_ago(h):
-    return int((datetime.now(timezone.utc) - timedelta(hours=h)).timestamp())
-
-def simplify_track(waypoints, stride=WAYPOINT_STRIDE):
-    if len(waypoints) <= 2:
-        return waypoints
-    kept = waypoints[::stride]
-    if kept[-1] != waypoints[-1]:
-        kept.append(waypoints[-1])
-    return kept
-
-def encode_path(waypoints):
-    result = []
-    for wp in waypoints:
-        if len(wp) >= 3 and wp[1] is not None and wp[2] is not None:
-            result.append([round(wp[1], 4), round(wp[2], 4)])
-    return result
 
 def load_existing(path):
     if path.exists():
@@ -93,38 +66,51 @@ def save(data, path, dry_run=False):
     print(f"Wrote {len(data['tracks'])} tracks to {path} ({kb:.1f} KB)")
 
 # ---------------------------------------------------------------------------
-# OpenSky API calls
+# ADS-B Exchange fetch
 # ---------------------------------------------------------------------------
 
-def api_get(url, params, timeout=30):
-    """GET with optional auth and basic rate-limit retry."""
-    r = requests.get(url, params=params, auth=OPENSKY_AUTH, timeout=timeout)
-    if r.status_code == 429:
-        print("Rate limited - waiting 60s")
-        time.sleep(60)
-        r = requests.get(url, params=params, auth=OPENSKY_AUTH, timeout=timeout)
-    return r
+def fetch_aircraft():
+    """Fetch all current aircraft from ADS-B Exchange."""
+    if not ADSBX_KEY:
+        raise ValueError("ADSBX_API_KEY environment variable not set.")
 
-def get_flights(begin_ts, end_ts, bounds):
-    min_lat, max_lat, min_lon, max_lon = bounds
-    params = {"begin": begin_ts, "end": end_ts,
-              "lamin": min_lat, "lamax": max_lat,
-              "lomin": min_lon, "lomax": max_lon}
-    print(f"Fetching flights {datetime.fromtimestamp(begin_ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC ...")
-    r = api_get(OPENSKY_FLIGHTS_URL, params)
+    headers = {
+        "api-auth": ADSBX_KEY,
+        "Accept": "application/json",
+    }
+    print("Fetching aircraft from ADS-B Exchange...")
+    r = requests.get(ADSBX_URL, headers=headers, timeout=30)
     r.raise_for_status()
-    flights = r.json() or []
-    print(f"  -> {len(flights)} flights found")
-    return flights
+    data = r.json()
+    aircraft = data.get("ac", [])
+    print(f"  -> {len(aircraft)} aircraft in snapshot")
+    return aircraft
 
-def get_track(icao24, begin_ts):
-    params = {"icao24": icao24, "time": begin_ts}
-    r = api_get(OPENSKY_TRACK_URL, params, timeout=15)
-    if r.status_code in (404, 400):
+def aircraft_to_track(ac, fetched_ts):
+    """Convert a single aircraft record to our track format."""
+    lat  = ac.get("lat")
+    lon  = ac.get("lon")
+    alt  = ac.get("alt_baro", 0)
+    icao = ac.get("hex", "")
+
+    # Skip if no position or on ground / too low
+    if lat is None or lon is None:
         return None
-    if not r.ok:
+    try:
+        if float(alt) < MIN_ALT_FT:
+            return None
+    except (TypeError, ValueError):
         return None
-    return r.json().get("path", [])
+
+    # A snapshot gives us one point per aircraft.
+    # We store it as a 1-point "track" — over many runs these accumulate
+    # into dense path webs as aircraft follow the same routes.
+    return {
+        "icao24":   icao,
+        "callsign": (ac.get("flight") or "").strip(),
+        "fetched":  fetched_ts,
+        "path":     [[round(float(lat), 4), round(float(lon), 4)]],
+    }
 
 # ---------------------------------------------------------------------------
 # Main
@@ -132,68 +118,50 @@ def get_track(icao24, begin_ts):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--hours",      type=int, default=24)
-    parser.add_argument("--prune-days", type=int, default=180)
+    parser.add_argument("--prune-days", type=int, default=DEFAULT_PRUNE_DAYS)
     parser.add_argument("--dry-run",    action="store_true")
     parser.add_argument("--output",     type=str, default=None)
     args = parser.parse_args()
 
-    out_path = Path(args.output) if args.output else OUTPUT_FILE
-    bounds   = BOUNDS[ACTIVE_BOUNDS]
-    end_ts   = ts_now()
-    begin_ts = ts_hours_ago(args.hours)
+    out_path  = Path(args.output) if args.output else OUTPUT_FILE
+    fetched   = ts_now()
 
     data = load_existing(out_path)
     print(f"Loaded {len(data['tracks'])} existing tracks")
 
     try:
-        flights = get_flights(begin_ts, end_ts, bounds)
-    except requests.HTTPError as e:
-        print(f"Failed to fetch flights: {e}")
-        print("Tip: Set OPENSKY_USERNAME and OPENSKY_PASSWORD for authenticated access.")
+        aircraft = fetch_aircraft()
+    except Exception as e:
+        print(f"Failed to fetch aircraft: {e}")
         return
 
-    sampled = flights[::SAMPLE_EVERY_N][:MAX_TRACKS_PER_RUN]
-    print(f"Sampling {len(sampled)} of {len(flights)} flights")
+    # Sample evenly across the full list for global coverage
+    step     = max(1, len(aircraft) // MAX_AIRCRAFT)
+    sampled  = aircraft[::step][:MAX_AIRCRAFT]
+    print(f"Sampling {len(sampled)} aircraft")
 
     new_tracks = []
-    for i, flight in enumerate(sampled):
-        icao24   = flight.get("icao24", "")
-        begin    = flight.get("firstSeen", begin_ts)
-        callsign = (flight.get("callsign") or "").strip()
+    for ac in sampled:
+        track = aircraft_to_track(ac, fetched)
+        if track:
+            new_tracks.append(track)
 
-        print(f"  [{i+1}/{len(sampled)}] {callsign or icao24} ...", end=" ", flush=True)
-        waypoints = get_track(icao24, begin)
-
-        if not waypoints or len(waypoints) < 4:
-            print("skip")
-            continue
-
-        path = encode_path(simplify_track(waypoints))
-        if len(path) < 2:
-            print("skip (no coords)")
-            continue
-
-        new_tracks.append({"icao24": icao24, "callsign": callsign,
-                           "fetched": end_ts, "path": path})
-        print(f"ok ({len(path)} pts)")
-        time.sleep(0.5)
-
-    print(f"Fetched {len(new_tracks)} new tracks")
+    print(f"Adding {len(new_tracks)} new position records")
     data["tracks"].extend(new_tracks)
 
+    # Prune old tracks
     if args.prune_days > 0:
-        cutoff_ts = end_ts - args.prune_days * 86400
+        cutoff = fetched - args.prune_days * 86400
         before = len(data["tracks"])
-        data["tracks"] = [t for t in data["tracks"] if t["fetched"] >= cutoff_ts]
+        data["tracks"] = [t for t in data["tracks"] if t["fetched"] >= cutoff]
         pruned = before - len(data["tracks"])
         if pruned:
             print(f"Pruned {pruned} tracks older than {args.prune_days} days")
 
     data["meta"] = {
-        "last_updated": datetime.now(timezone.utc).isoformat(),
-        "total_tracks": len(data["tracks"]),
-        "bounds": ACTIVE_BOUNDS,
+        "last_updated":  datetime.now(timezone.utc).isoformat(),
+        "total_tracks":  len(data["tracks"]),
+        "source":        "adsbexchange",
     }
 
     save(data, out_path, dry_run=args.dry_run)
