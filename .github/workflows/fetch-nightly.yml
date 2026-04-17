@@ -23,7 +23,18 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Seed flights.json if missing
+        run: |
+          mkdir -p docs
+          if [ ! -f docs/flights.json ]; then
+            echo '{"tracks":[],"meta":{"last_updated":null,"total_tracks":0}}' > docs/flights.json
+            echo "Created empty flights.json"
+          fi
+
       - name: Fetch flight data
+        env:
+          OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
+          OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
         run: python fetch_flights.py --hours 26 --prune-days 180
 
       - name: Commit updated flights.json
