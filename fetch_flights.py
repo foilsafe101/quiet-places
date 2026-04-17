@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
 """
 fetch_flights.py - Quiet Places Project
-Fetches recent aircraft positions from ADS-B Exchange and saves flight paths.
+Fetches live aircraft positions from adsb.lol (free, no API key required)
+and appends them to flights.json.
 
-ADS-B Exchange works from GitHub Actions (unlike OpenSky which blocks cloud IPs).
-Get a free API key at: https://www.adsbexchange.com/data/
-
-Set ADSBX_API_KEY as a GitHub Actions secret.
+adsb.lol is a community-run open ADS-B tracker — no signup, no key needed.
+API docs: https://api.adsb.lol/docs
 
 Usage:
-    python fetch_flights.py                  # fetch current snapshot
-    python fetch_flights.py --prune-days 90  # prune tracks older than N days
-    python fetch_flights.py --dry-run        # print stats without writing
+    python fetch_flights.py
+    python fetch_flights.py --prune-days 90
+    python fetch_flights.py --dry-run
 """
 
 import argparse
 import json
-import os
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -27,20 +25,24 @@ import requests
 # Configuration
 # ---------------------------------------------------------------------------
 
-# ADS-B Exchange API - returns live aircraft positions
-ADSBX_URL    = "https://adsbexchange.com/api/aircraft/v2/all/"
-ADSBX_KEY    = os.environ.get("ADSBX_API_KEY", "")
+OUTPUT_FILE    = Path(__file__).parent / "docs" / "flights.json"
+MIN_ALT_FT     = 1000   # ignore ground vehicles and very low aircraft
+MAX_AIRCRAFT   = 200    # how many positions to sample per run
 
-OUTPUT_FILE  = Path(__file__).parent / "docs" / "flights.json"
-
-# How many aircraft to sample per run (each becomes a short path segment)
-MAX_AIRCRAFT = 150
-
-# Minimum altitude in feet - filter out ground vehicles etc.
-MIN_ALT_FT   = 1000
-
-# Prune default
-DEFAULT_PRUNE_DAYS = 180
+# adsb.lol regional endpoints — we query several to get global coverage
+# Each returns aircraft within 250nm of the lat/lon
+REGIONS = [
+    ("North Atlantic",   51.0,  -30.0),
+    ("North America E",  40.0,  -75.0),
+    ("North America W",  40.0, -120.0),
+    ("Europe",           51.0,   10.0),
+    ("Middle East",      25.0,   50.0),
+    ("Asia East",        35.0,  120.0),
+    ("Asia SE",          10.0,  105.0),
+    ("Australia",       -30.0,  135.0),
+    ("South America",   -15.0,  -55.0),
+    ("Africa",           -5.0,   25.0),
+]
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,34 +68,27 @@ def save(data, path, dry_run=False):
     print(f"Wrote {len(data['tracks'])} tracks to {path} ({kb:.1f} KB)")
 
 # ---------------------------------------------------------------------------
-# ADS-B Exchange fetch
+# adsb.lol fetch
 # ---------------------------------------------------------------------------
 
-def fetch_aircraft():
-    """Fetch all current aircraft from ADS-B Exchange."""
-    if not ADSBX_KEY:
-        raise ValueError("ADSBX_API_KEY environment variable not set.")
-
-    headers = {
-        "api-auth": ADSBX_KEY,
-        "Accept": "application/json",
-    }
-    print("Fetching aircraft from ADS-B Exchange...")
-    r = requests.get(ADSBX_URL, headers=headers, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    aircraft = data.get("ac", [])
-    print(f"  -> {len(aircraft)} aircraft in snapshot")
-    return aircraft
+def fetch_region(name, lat, lon):
+    """Fetch aircraft within 250nm of a lat/lon point."""
+    url = f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250"
+    try:
+        r = requests.get(url, timeout=15, headers={"User-Agent": "quiet-places-art-project"})
+        r.raise_for_status()
+        data = r.json()
+        ac = data.get("ac", [])
+        print(f"  {name}: {len(ac)} aircraft")
+        return ac
+    except Exception as e:
+        print(f"  {name}: failed ({e})")
+        return []
 
 def aircraft_to_track(ac, fetched_ts):
-    """Convert a single aircraft record to our track format."""
-    lat  = ac.get("lat")
-    lon  = ac.get("lon")
-    alt  = ac.get("alt_baro", 0)
-    icao = ac.get("hex", "")
-
-    # Skip if no position or on ground / too low
+    lat = ac.get("lat")
+    lon = ac.get("lon")
+    alt = ac.get("alt_baro", 0)
     if lat is None or lon is None:
         return None
     try:
@@ -101,12 +96,8 @@ def aircraft_to_track(ac, fetched_ts):
             return None
     except (TypeError, ValueError):
         return None
-
-    # A snapshot gives us one point per aircraft.
-    # We store it as a 1-point "track" — over many runs these accumulate
-    # into dense path webs as aircraft follow the same routes.
     return {
-        "icao24":   icao,
+        "icao24":   ac.get("hex", ""),
         "callsign": (ac.get("flight") or "").strip(),
         "fetched":  fetched_ts,
         "path":     [[round(float(lat), 4), round(float(lon), 4)]],
@@ -118,27 +109,35 @@ def aircraft_to_track(ac, fetched_ts):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--prune-days", type=int, default=DEFAULT_PRUNE_DAYS)
+    parser.add_argument("--prune-days", type=int, default=180)
     parser.add_argument("--dry-run",    action="store_true")
     parser.add_argument("--output",     type=str, default=None)
     args = parser.parse_args()
 
-    out_path  = Path(args.output) if args.output else OUTPUT_FILE
-    fetched   = ts_now()
+    out_path = Path(args.output) if args.output else OUTPUT_FILE
+    fetched  = ts_now()
 
     data = load_existing(out_path)
     print(f"Loaded {len(data['tracks'])} existing tracks")
+    print("Fetching aircraft from adsb.lol (no API key required)...")
 
-    try:
-        aircraft = fetch_aircraft()
-    except Exception as e:
-        print(f"Failed to fetch aircraft: {e}")
-        return
+    # Collect aircraft across all regions, deduplicate by ICAO
+    seen = set()
+    all_aircraft = []
+    for name, lat, lon in REGIONS:
+        ac_list = fetch_region(name, lat, lon)
+        for ac in ac_list:
+            icao = ac.get("hex", "")
+            if icao and icao not in seen:
+                seen.add(icao)
+                all_aircraft.append(ac)
+        time.sleep(0.3)  # be polite
 
-    # Sample evenly across the full list for global coverage
-    step     = max(1, len(aircraft) // MAX_AIRCRAFT)
-    sampled  = aircraft[::step][:MAX_AIRCRAFT]
-    print(f"Sampling {len(sampled)} aircraft")
+    print(f"Total unique aircraft: {len(all_aircraft)}")
+
+    # Sample evenly across all aircraft
+    step    = max(1, len(all_aircraft) // MAX_AIRCRAFT)
+    sampled = all_aircraft[::step][:MAX_AIRCRAFT]
 
     new_tracks = []
     for ac in sampled:
@@ -146,10 +145,9 @@ def main():
         if track:
             new_tracks.append(track)
 
-    print(f"Adding {len(new_tracks)} new position records")
+    print(f"Adding {len(new_tracks)} position records")
     data["tracks"].extend(new_tracks)
 
-    # Prune old tracks
     if args.prune_days > 0:
         cutoff = fetched - args.prune_days * 86400
         before = len(data["tracks"])
@@ -159,9 +157,9 @@ def main():
             print(f"Pruned {pruned} tracks older than {args.prune_days} days")
 
     data["meta"] = {
-        "last_updated":  datetime.now(timezone.utc).isoformat(),
-        "total_tracks":  len(data["tracks"]),
-        "source":        "adsbexchange",
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "total_tracks": len(data["tracks"]),
+        "source":       "adsb.lol",
     }
 
     save(data, out_path, dry_run=args.dry_run)
