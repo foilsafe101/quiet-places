@@ -33,9 +33,8 @@ jobs:
 
       - name: Fetch flight data
         env:
-          OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
-          OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
-        run: python fetch_flights.py --hours 26 --prune-days 180
+          ADSBX_API_KEY: ${{ secrets.ADSBX_API_KEY }}
+        run: python fetch_flights.py --prune-days 180
 
       - name: Commit updated flights.json
         run: |
