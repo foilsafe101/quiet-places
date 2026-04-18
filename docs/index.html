@@ -10,25 +10,25 @@
     body { background: #0c0f1a; font-family: 'Georgia', 'Times New Roman', serif; color: #d4cfc0; height: 100vh; overflow: hidden; }
     #map { width: 100vw; height: 100vh; }
     .leaflet-tile { filter: brightness(0.85) saturate(0.7); }
-    .panel { position: absolute; z-index: 1000; background: rgba(8, 12, 22, 0.90); border: 0.5px solid rgba(255,255,255,0.10); border-radius: 6px; backdrop-filter: blur(4px); }
+    .panel { position: absolute; z-index: 1000; background: rgba(8,12,22,0.90); border: 0.5px solid rgba(255,255,255,0.10); border-radius: 6px; }
     #title-panel { top: 14px; left: 14px; padding: 12px 16px; }
     #title-panel h1 { font-size: 16px; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: #c8c2ae; margin-bottom: 3px; }
     #title-panel p { font-size: 11px; color: #6a6758; letter-spacing: 0.04em; }
-    #legend { top: 14px; right: 14px; padding: 12px 16px; min-width: 155px; }
+    #legend { top: 14px; right: 14px; padding: 12px 16px; min-width: 160px; }
     .leg-section-title { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #6a6758; margin-bottom: 8px; }
     .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; color: #a09b8c; }
     .leg-swatch { width: 30px; height: 2px; border-radius: 1px; flex-shrink: 0; }
-    .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .leg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .leg-divider { border: none; border-top: 0.5px solid rgba(255,255,255,0.07); margin: 8px 0; }
     #controls { position: absolute; bottom: 24px; left: 14px; z-index: 1000; display: flex; flex-direction: column; gap: 4px; }
-    .ctrl-btn { width: 34px; height: 34px; background: rgba(8, 12, 22, 0.90); border: 0.5px solid rgba(255,255,255,0.10); border-radius: 4px; color: #a09b8c; font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; }
+    .ctrl-btn { width: 34px; height: 34px; background: rgba(8,12,22,0.90); border: 0.5px solid rgba(255,255,255,0.10); border-radius: 4px; color: #a09b8c; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
     .ctrl-btn:hover { background: rgba(25,35,55,0.95); color: #d4cfc0; }
-    #status-bar { position: absolute; bottom: 14px; right: 14px; z-index: 1000; }
+    #status-bar { position: absolute; bottom: 14px; right: 14px; z-index: 1000; padding: 6px 10px; }
     #status-bar p { font-size: 10px; color: #6a6758; letter-spacing: 0.06em; text-align: right; line-height: 1.7; }
     #status-bar .highlight { color: #a09b8c; }
-    #toggle-btn { position: absolute; bottom: 60px; right: 14px; z-index: 1000; padding: 6px 12px; font-family: 'Georgia', serif; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; color: #a09b8c; transition: background 0.15s, color 0.15s; }
+    #toggle-btn { position: absolute; bottom: 60px; right: 14px; z-index: 1000; padding: 6px 12px; font-family: 'Georgia', serif; font-size: 11px; cursor: pointer; color: #a09b8c; }
     #toggle-btn.paths-on { border-color: rgba(210,65,35,0.4); color: #d44535; }
-    #loading-overlay { position: absolute; inset: 0; z-index: 2000; background: rgba(8, 12, 22, 0.75); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; transition: opacity 0.5s; }
+    #loading-overlay { position: absolute; inset: 0; z-index: 2000; background: rgba(8,12,22,0.75); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; transition: opacity 0.5s; }
     #loading-overlay.hidden { opacity: 0; pointer-events: none; }
     #loading-overlay p { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6758; }
     .spinner { width: 28px; height: 28px; border: 1.5px solid rgba(255,255,255,0.08); border-top-color: rgba(210,65,35,0.6); border-radius: 50%; animation: spin 1.2s linear infinite; }
@@ -40,82 +40,114 @@
 <div id="map"></div>
 <div class="panel" id="title-panel"><h1>Map of Quiet Places</h1><p>No audible anthropogenic sound</p></div>
 <div class="panel" id="legend">
-  <div class="leg-section-title">Flight activity</div>
-  <div class="leg-row"><div class="leg-dot" style="background:rgb(220,60,30)"></div>Past 6 hours</div>
-  <div class="leg-row"><div class="leg-dot" style="background:rgb(180,45,22)"></div>Past 24 hours</div>
-  <div class="leg-row"><div class="leg-dot" style="background:rgb(120,30,15)"></div>Past week</div>
-  <div class="leg-row"><div class="leg-dot" style="background:rgb(65,18,9)"></div>Past month</div>
-  <div class="leg-row"><div class="leg-dot" style="background:rgb(35,10,5)"></div>Older</div>
+  <div class="leg-section-title">Flight paths</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgb(220,60,30)"></div>Recent (days)</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgb(150,38,18)"></div>Past week</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgb(80,20,10)"></div>Past month</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgb(40,12,6)"></div>Historical</div>
   <hr class="leg-divider" />
-  <div class="leg-section-title">Note</div>
-  <div style="font-size:10px;color:#6a6758;line-height:1.5;">Dots = today's positions.<br>Lines appear as tracks<br>accumulate over time.</div>
+  <div style="font-size:10px;color:#6a6758;line-height:1.5;">Lines = connected flight paths.<br>Dots = single observations.</div>
 </div>
 <div id="controls">
   <button class="ctrl-btn" id="zoom-in">+</button>
   <button class="ctrl-btn" id="zoom-out">−</button>
 </div>
-<button class="panel ctrl-btn" id="toggle-btn" style="width:auto;height:auto;">&#9679; Flight activity on</button>
+<button class="panel ctrl-btn" id="toggle-btn" style="width:auto;height:auto;">&#9679; Flights on</button>
 <div class="panel" id="status-bar">
   <p id="coord-display">Hover to show coordinates</p>
   <p id="data-info">Loading…</p>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const map = L.map('map', { center: [40, -30], zoom: 3, zoomControl: false, attributionControl: false, preferCanvas: true });
+const map = L.map('map', { center: [35, 0], zoom: 3, zoomControl: false, attributionControl: false, preferCanvas: true });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18, subdomains: 'abcd' }).addTo(map);
 L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution('© OpenStreetMap © CARTO · Quiet Places Project').addTo(map);
 document.getElementById('zoom-in').onclick = () => map.zoomIn();
 document.getElementById('zoom-out').onclick = () => map.zoomOut();
-map.on('mousemove', e => { document.getElementById('coord-display').textContent = e.latlng.lat.toFixed(3) + '° N   ' + e.latlng.lng.toFixed(3) + '° E'; });
+map.on('mousemove', e => {
+  document.getElementById('coord-display').textContent = e.latlng.lat.toFixed(3) + '° N   ' + e.latlng.lng.toFixed(3) + '° E';
+});
 
 function styleForAgeDays(d) {
-  if (d < 0.25) return { color: 'rgb(220,60,30)',  opacity: 0.88 };
-  if (d < 1)    return { color: 'rgb(195,52,26)',  opacity: 0.80 };
-  if (d < 7)    return { color: 'rgb(150,38,18)',  opacity: 0.70 };
-  if (d < 30)   return { color: 'rgb(90,24,12)',   opacity: 0.58 };
-  if (d < 90)   return { color: 'rgb(55,15,8)',    opacity: 0.48 };
-  return               { color: 'rgb(32,9,4)',     opacity: 0.38 };
+  if (d < 1)   return { color: 'rgb(220,60,30)',  weight: 1.4, opacity: 0.90 };
+  if (d < 7)   return { color: 'rgb(195,50,25)',  weight: 1.2, opacity: 0.82 };
+  if (d < 30)  return { color: 'rgb(150,38,18)',  weight: 1.0, opacity: 0.72 };
+  if (d < 90)  return { color: 'rgb(100,25,12)',  weight: 0.8, opacity: 0.60 };
+  if (d < 365) return { color: 'rgb(60,16,8)',    weight: 0.7, opacity: 0.50 };
+  return              { color: 'rgb(35,10,5)',    weight: 0.6, opacity: 0.40 };
 }
 
 const NOW_TS = Math.floor(Date.now() / 1000);
-function ageDays(ts) { return (NOW_TS - ts) / 86400; }
+const MAX_GAP_SECONDS = 12 * 3600; // 12 hours — max time between points to connect as one flight
+
+function buildPaths(tracks) {
+  // Group all observations by aircraft ICAO24
+  const byAircraft = {};
+  tracks.forEach(t => {
+    if (!t.icao24 || !t.path || t.path.length === 0) return;
+    if (!byAircraft[t.icao24]) byAircraft[t.icao24] = [];
+    byAircraft[t.icao24].push({ lat: t.path[0][0], lon: t.path[0][1], ts: t.fetched });
+  });
+
+  const lines = [];
+  const dots = [];
+
+  Object.values(byAircraft).forEach(obs => {
+    // Sort by time
+    obs.sort((a, b) => a.ts - b.ts);
+
+    // Split into flight segments — new segment if gap > MAX_GAP_SECONDS
+    let segment = [obs[0]];
+    for (let i = 1; i < obs.length; i++) {
+      const gap = obs[i].ts - obs[i-1].ts;
+      if (gap > MAX_GAP_SECONDS) {
+        if (segment.length >= 2) lines.push(segment);
+        else dots.push(segment[0]);
+        segment = [];
+      }
+      segment.push(obs[i]);
+    }
+    if (segment.length >= 2) lines.push(segment);
+    else if (segment.length === 1) dots.push(segment[0]);
+  });
+
+  return { lines, dots };
+}
 
 const pathLayer = L.layerGroup().addTo(map);
 let pathsVisible = true;
 
 function renderTracks(tracks) {
   pathLayer.clearLayers();
-  tracks.forEach(t => {
-    if (!t.path || t.path.length === 0) return;
-    const days  = ageDays(t.fetched);
-    const style = styleForAgeDays(days);
-    if (t.path.length === 1) {
-      L.circleMarker(t.path[0], {
-        radius: 2,
-        color: style.color,
-        fillColor: style.color,
-        fillOpacity: style.opacity,
-        opacity: 0,
-        weight: 0,
-        interactive: false,
-      }).addTo(pathLayer);
-    } else {
-      L.polyline(t.path, {
-        color: style.color,
-        weight: t.path.length > 5 ? 1.2 : 0.9,
-        opacity: style.opacity,
-        interactive: false,
-      }).addTo(pathLayer);
-    }
+  const { lines, dots } = buildPaths(tracks);
+
+  // Draw lines
+  lines.forEach(seg => {
+    const ageDays = (NOW_TS - seg[seg.length - 1].ts) / 86400;
+    const style = styleForAgeDays(ageDays);
+    const latlngs = seg.map(p => [p.lat, p.lon]);
+    L.polyline(latlngs, { ...style, interactive: false }).addTo(pathLayer);
   });
+
+  // Draw remaining single dots
+  dots.forEach(p => {
+    const ageDays = (NOW_TS - p.ts) / 86400;
+    const style = styleForAgeDays(ageDays);
+    L.circleMarker([p.lat, p.lon], {
+      radius: 2, color: style.color, fillColor: style.color,
+      fillOpacity: style.opacity, opacity: 0, weight: 0, interactive: false
+    }).addTo(pathLayer);
+  });
+
+  return { lines: lines.length, dots: dots.length };
 }
 
 const toggleBtn = document.getElementById('toggle-btn');
 toggleBtn.classList.add('paths-on');
 toggleBtn.onclick = () => {
   pathsVisible = !pathsVisible;
-  if (pathsVisible) { pathLayer.addTo(map); toggleBtn.textContent = '● Flight activity on'; toggleBtn.classList.add('paths-on'); }
-  else { map.removeLayer(pathLayer); toggleBtn.textContent = '○ Flight activity off'; toggleBtn.classList.remove('paths-on'); }
+  if (pathsVisible) { pathLayer.addTo(map); toggleBtn.textContent = '● Flights on'; toggleBtn.classList.add('paths-on'); }
+  else { map.removeLayer(pathLayer); toggleBtn.textContent = '○ Flights off'; toggleBtn.classList.remove('paths-on'); }
 };
 
 async function loadData() {
@@ -125,13 +157,13 @@ async function loadData() {
     const res = await fetch('flights.json');
     if (!res.ok) throw new Error('no data');
     const data = await res.json();
-    renderTracks(data.tracks || []);
+    const { lines, dots } = renderTracks(data.tracks || []);
     const updated = data.meta?.last_updated
       ? new Date(data.meta.last_updated).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
       : 'unknown';
-    dataInfo.innerHTML = '<span class="highlight">' + (data.tracks||[]).length.toLocaleString() + ' positions</span> · ' + updated;
+    dataInfo.innerHTML = '<span class="highlight">' + lines.toLocaleString() + ' paths, ' + dots.toLocaleString() + ' pts</span> · ' + updated;
   } catch(e) {
-    dataInfo.innerHTML = '<span style="color:#8a6a50">No data yet</span>';
+    dataInfo.innerHTML = '<span style="color:#8a6a50">No data</span>';
   }
   overlay.classList.add('hidden');
   setTimeout(() => overlay.remove(), 600);
