@@ -168,7 +168,7 @@ def query_slot(opensky, slot):
     """
 
     try:
-        df = opensky.rawquery(sql)
+        df = opensky.query(sql)
         if df is None or len(df) == 0:
             return []
         results = []
