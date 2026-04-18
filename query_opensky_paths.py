@@ -61,6 +61,39 @@ MIN_ALT_M         = 300
 MAX_ROWS_PER_SLOT = 3000
 PAUSE_SECONDS     = 6
 MAX_PATH_GAP_S    = 600
+RDP_TOLERANCE     = 0.01   # ~1km at equator
+
+
+def simplify_path(points, tolerance=RDP_TOLERANCE):
+    if len(points) <= 2:
+        return points
+    deduped = [points[0]]
+    for p in points[1:]:
+        if p != deduped[-1]:
+            deduped.append(p)
+    if len(deduped) <= 2:
+        return deduped
+
+    def rdp(pts, eps):
+        if len(pts) < 3:
+            return pts
+        start, end = pts[0], pts[-1]
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        max_dist, idx = 0, 0
+        for i in range(1, len(pts) - 1):
+            if dx == 0 and dy == 0:
+                dist = ((pts[i][0]-start[0])**2 + (pts[i][1]-start[1])**2) ** 0.5
+            else:
+                t = ((pts[i][0]-start[0])*dx + (pts[i][1]-start[1])*dy) / (dx*dx + dy*dy)
+                t = max(0.0, min(1.0, t))
+                dist = ((pts[i][0]-start[0]-t*dx)**2 + (pts[i][1]-start[1]-t*dy)**2) ** 0.5
+            if dist > max_dist:
+                max_dist, idx = dist, i
+        if max_dist > eps:
+            return rdp(pts[:idx+1], eps)[:-1] + rdp(pts[idx:], eps)
+        return [start, end]
+
+    return rdp(deduped, tolerance)
 
 
 def generate_schedule():
@@ -139,10 +172,10 @@ class DayAccumulator:
         return tracks
 
     def _make_track(self, icao24, segment):
+        raw = [[round(p["lat"], 3), round(p["lon"], 3)] for p in segment]
         return {
-            "icao24":  icao24,
             "fetched": segment[-1]["ts"],
-            "path":    [[round(p["lat"], 4), round(p["lon"], 4)] for p in segment],
+            "path":    simplify_path(raw),
         }
 
 
