@@ -79,50 +79,29 @@ function styleForAgeDays(d) {
 }
 
 const NOW_TS = Math.floor(Date.now() / 1000);
-const MAX_GAP_SECONDS = 30 * 86400;
-
-function buildPaths(tracks) {
-  const byAircraft = {};
-  tracks.forEach(t => {
-    if (!t.icao24 || !t.path || t.path.length === 0) return;
-    if (!byAircraft[t.icao24]) byAircraft[t.icao24] = [];
-    byAircraft[t.icao24].push({ lat: t.path[0][0], lon: t.path[0][1], ts: t.fetched });
-  });
-  const lines = [], dots = [];
-  Object.values(byAircraft).forEach(obs => {
-    obs.sort((a, b) => a.ts - b.ts);
-    let seg = [obs[0]];
-    for (let i = 1; i < obs.length; i++) {
-      if (obs[i].ts - obs[i-1].ts > MAX_GAP_SECONDS) {
-        if (seg.length >= 2) lines.push(seg); else dots.push(seg[0]);
-        seg = [];
-      }
-      seg.push(obs[i]);
-    }
-    if (seg.length >= 2) lines.push(seg); else if (seg.length === 1) dots.push(seg[0]);
-  });
-  return { lines, dots };
-}
 
 const pathLayer = L.layerGroup().addTo(map);
 let pathsVisible = true;
 
 function renderTracks(tracks) {
   pathLayer.clearLayers();
-  const { lines, dots } = buildPaths(tracks);
-  lines.forEach(seg => {
-    const ageDays = (NOW_TS - seg[seg.length-1].ts) / 86400;
+  let lines = 0, dots = 0;
+  tracks.forEach(t => {
+    if (!t.path || t.path.length === 0) return;
+    const ageDays = (NOW_TS - t.fetched) / 86400;
     const style = styleForAgeDays(ageDays);
-    L.polyline(seg.map(p => [p.lat, p.lon]), { ...style, interactive: false }).addTo(pathLayer);
+    if (t.path.length >= 2) {
+      L.polyline(t.path, { ...style, interactive: false }).addTo(pathLayer);
+      lines++;
+    } else {
+      L.circleMarker(t.path[0], {
+        radius: 2, color: style.color, fillColor: style.color,
+        fillOpacity: style.opacity, opacity: 0, weight: 0, interactive: false
+      }).addTo(pathLayer);
+      dots++;
+    }
   });
-  dots.forEach(p => {
-    const style = styleForAgeDays((NOW_TS - p.ts) / 86400);
-    L.circleMarker([p.lat, p.lon], {
-      radius: 2, color: style.color, fillColor: style.color,
-      fillOpacity: style.opacity, opacity: 0, weight: 0, interactive: false
-    }).addTo(pathLayer);
-  });
-  return { lines: lines.length, dots: dots.length };
+  return { lines, dots };
 }
 
 const toggleBtn = document.getElementById('toggle-btn');
