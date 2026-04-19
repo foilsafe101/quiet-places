@@ -83,7 +83,7 @@ const tileLayers = {
 ['voyager','satellite','topo','dark','transport'].forEach(k => tileLayers[k].addTo(map));
 
 // Quiet zone image overlay (lat -60..75, lon -180..180)
-const quietOverlay = L.imageOverlay('quiet_overlay.png', [[-60, -180], [75, 180]], { opacity: 0, interactive: false });
+const quietOverlay = L.imageOverlay('quiet_overlay.png', [[-60, -180], [85, 180]], { opacity: 0, interactive: false });
 quietOverlay.addTo(map);
 const slQuiet = document.getElementById('sl-quiet');
 slQuiet.addEventListener('input', () => {

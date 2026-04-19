@@ -25,7 +25,7 @@ NOISY_DEG_FLIGHTS = 0.29   # 20 miles
 NOISY_DEG_ROADS   = 0.015  # ~1 mile
 QUIET_DEG         = 1.5    # beyond this → fully opaque
 
-LAT_MIN, LAT_MAX = -60.0, 75.0
+LAT_MIN, LAT_MAX = -60.0, 85.0
 LON_MIN, LON_MAX = -180.0, 180.0
 
 R, G, B   = 10, 30, 120
