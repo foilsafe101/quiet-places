@@ -52,6 +52,7 @@
   <div class="layer-row"><label>Topo</label><input type="range" id="sl-topo"      min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Dark</label><input type="range" id="sl-dark"      min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Roads/Rail</label><input type="range" id="sl-transport" min="0" max="100" value="0"></div>
+  <div class="layer-row"><label>Quiet zones</label><input type="range" id="sl-quiet" min="0" max="100" value="0"></div>
   <hr class="layer-divider" />
   <div class="layer-row">
     <label style="display:flex;align-items:center;gap:5px;"><div class="flight-swatch"></div>Flights</label>
@@ -80,6 +81,15 @@ const tileLayers = {
 };
 // Add in order: voyager bottom, dark on top so dark overlay works
 ['voyager','satellite','topo','dark','transport'].forEach(k => tileLayers[k].addTo(map));
+
+// Quiet zone image overlay (lat -60..75, lon -180..180)
+const quietOverlay = L.imageOverlay('quiet_overlay.png', [[-60, -180], [75, 180]], { opacity: 0, interactive: false });
+quietOverlay.addTo(map);
+const slQuiet = document.getElementById('sl-quiet');
+slQuiet.addEventListener('input', () => {
+  quietOverlay.setOpacity(slQuiet.value / 100);
+  slQuiet.style.setProperty('--val', slQuiet.value + '%');
+});
 
 // Slider → tile opacity
 ['voyager','satellite','topo','dark','transport'].forEach(k => {

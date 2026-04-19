@@ -51,8 +51,11 @@ print(f"  Merged {len(tracks)} tracks into flights.json ({kb:.0f} KB)")
 PYEOF
   fi
 
+  # Regenerate quiet overlay
+  $VENV generate_quiet_overlay.py 2>&1 | tee -a $LOG
+
   # Commit and push
-  git add docs/flights.json docs/flights_*.json query_progress_paths*.json 2>/dev/null
+  git add docs/flights.json docs/flights_*.json docs/quiet_overlay.png query_progress_paths*.json 2>/dev/null
   SLOTS=$($VENV -c "
 import json, glob
 total = 0
