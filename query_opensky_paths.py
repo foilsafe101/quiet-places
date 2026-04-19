@@ -59,7 +59,7 @@ LAND_REGIONS = [
 
 MIN_ALT_M         = 300
 MAX_ROWS_PER_SLOT = 3000
-PAUSE_SECONDS     = 6
+PAUSE_SECONDS     = 3
 MAX_PATH_GAP_S    = 600
 RDP_TOLERANCE     = 0.01   # ~1km at equator
 
@@ -220,14 +220,30 @@ def query_slot(opensky, slot):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run",  action="store_true")
-    parser.add_argument("--batch",    type=int, default=None)
-    parser.add_argument("--start",    type=str, default=None)
+    parser.add_argument("--dry-run",     action="store_true")
+    parser.add_argument("--batch",       type=int, default=None)
+    parser.add_argument("--start",       type=str, default=None)
+    parser.add_argument("--worker",      type=int, default=None,
+                        help="Worker index (0 or 1). Splits regions: 0→0-4, 1→5-8")
     args = parser.parse_args()
 
+    # Worker split: each worker gets its own output/progress files and region subset
+    global OUTPUT_FILE, PROGRESS_FILE
+    if args.worker is not None:
+        region_splits = {0: list(range(5)), 1: list(range(5, 9))}
+        if args.worker not in region_splits:
+            print(f"ERROR: --worker must be 0 or 1"); return
+        allowed_regions = set(region_splits[args.worker])
+        OUTPUT_FILE   = Path(__file__).parent / "docs" / f"flights_{args.worker}.json"
+        PROGRESS_FILE = Path(__file__).parent / f"query_progress_paths_{args.worker}.json"
+        print(f"Worker {args.worker}: regions {sorted(allowed_regions)}")
+    else:
+        allowed_regions = None
+
     schedule = generate_schedule()
+    if allowed_regions is not None:
+        schedule = [s for s in schedule if s["r_idx"] in allowed_regions]
     print(f"Total schedule: {len(schedule):,} query slots")
-    print(f"  = {len(SAMPLE_WEEKS_2025)} months x 7 days x {SLOTS_PER_DAY} slots x {len(LAND_REGIONS)} regions")
 
     if args.dry_run:
         print(f"\nFirst 5 slots:")
