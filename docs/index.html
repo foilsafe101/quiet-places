@@ -39,10 +39,7 @@
 <div class="panel" id="title-panel"><h1>Map of Quiet Places</h1><p>No audible anthropogenic sound</p></div>
 <div class="panel" id="legend">
   <div class="leg-section-title">Flight paths</div>
-  <div class="leg-row"><div class="leg-swatch" style="background:rgb(200,50,20)"></div>Recent (days)</div>
-  <div class="leg-row"><div class="leg-swatch" style="background:rgb(160,35,15)"></div>Past week</div>
-  <div class="leg-row"><div class="leg-swatch" style="background:rgb(110,22,10)"></div>Past month</div>
-  <div class="leg-row"><div class="leg-swatch" style="background:rgb(60,12,5)"></div>Historical</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgb(220,30,30)"></div>2025 flights</div>
   <hr class="leg-divider" />
   <div style="font-size:10px;color:#8a7e6e;line-height:1.5;">Lines = connected paths.<br>Dots = isolated observations.</div>
 </div>
@@ -70,12 +67,7 @@ map.on('mousemove', e => {
 });
 
 function styleForAgeDays(d) {
-  if (d < 1)   return { color: 'rgb(255,30,30)',  weight: 1.6, opacity: 0.92 };
-  if (d < 7)   return { color: 'rgb(220,20,20)',  weight: 1.3, opacity: 0.84 };
-  if (d < 30)  return { color: 'rgb(180,15,15)',  weight: 1.1, opacity: 0.74 };
-  if (d < 90)  return { color: 'rgb(140,10,10)',  weight: 0.9, opacity: 0.62 };
-  if (d < 365) return { color: 'rgb(100,8,8)',    weight: 0.7, opacity: 0.50 };
-  return              { color: 'rgb(60,5,5)',     weight: 0.6, opacity: 0.40 };
+  return { color: 'rgb(220,30,30)', weight: 1.0, opacity: 0.7 };
 }
 
 const NOW_TS = Math.floor(Date.now() / 1000);
