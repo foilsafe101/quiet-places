@@ -51,6 +51,7 @@
   <div class="layer-row"><label>Satellite</label><input type="range" id="sl-satellite" min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Topo</label><input type="range" id="sl-topo"      min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Dark</label><input type="range" id="sl-dark"      min="0" max="100" value="0"></div>
+  <div class="layer-row"><label>Roads/Rail</label><input type="range" id="sl-transport" min="0" max="100" value="0"></div>
   <hr class="layer-divider" />
   <div class="layer-row">
     <label style="display:flex;align-items:center;gap:5px;"><div class="flight-swatch"></div>Flights</label>
@@ -75,12 +76,13 @@ const tileLayers = {
   satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0 }),
   topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', opacity: 0 }),
   dark:      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', opacity: 0 }),
+  transport: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0 }),
 };
 // Add in order: voyager bottom, dark on top so dark overlay works
-['voyager','satellite','topo','dark'].forEach(k => tileLayers[k].addTo(map));
+['voyager','satellite','topo','dark','transport'].forEach(k => tileLayers[k].addTo(map));
 
 // Slider → tile opacity
-['voyager','satellite','topo','dark'].forEach(k => {
+['voyager','satellite','topo','dark','transport'].forEach(k => {
   const sl = document.getElementById('sl-' + k);
   const setVal = () => {
     const v = sl.value / 100;
