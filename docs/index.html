@@ -26,6 +26,10 @@
     #status-bar .highlight { color: #5a4e3e; }
     #toggle-btn { position: absolute; bottom: 60px; right: 14px; z-index: 1000; padding: 6px 12px; font-family: 'Georgia', serif; font-size: 11px; cursor: pointer; color: #8a7e6e; }
     #toggle-btn.paths-on { border-color: rgba(180,60,30,0.4); color: #b43c1e; }
+    #layer-switcher { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 4px; }
+    .layer-btn { padding: 5px 11px; font-family: 'Georgia', serif; font-size: 11px; cursor: pointer; color: #5a4e3e; background: rgba(255,252,245,0.92); border: 0.5px solid rgba(0,0,0,0.12); border-radius: 4px; letter-spacing: 0.04em; transition: background 0.15s; }
+    .layer-btn:hover { background: rgba(240,236,228,0.98); }
+    .layer-btn.active { background: rgba(220,210,195,0.98); border-color: rgba(0,0,0,0.25); color: #2c2820; }
     #loading-overlay { position: absolute; inset: 0; z-index: 2000; background: rgba(232,228,217,0.85); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; transition: opacity 0.5s; }
     #loading-overlay.hidden { opacity: 0; pointer-events: none; }
     #loading-overlay p { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8a7e6e; }
@@ -36,6 +40,12 @@
 <body>
 <div id="loading-overlay"><div class="spinner"></div><p>Loading flight history…</p></div>
 <div id="map"></div>
+<div id="layer-switcher">
+  <button class="layer-btn active" data-layer="voyager">Map</button>
+  <button class="layer-btn" data-layer="satellite">Satellite</button>
+  <button class="layer-btn" data-layer="topo">Topo</button>
+  <button class="layer-btn" data-layer="dark">Dark</button>
+</div>
 <div class="panel" id="title-panel"><h1>Map of Quiet Places</h1><p>No audible anthropogenic sound</p></div>
 <div class="panel" id="legend">
   <div class="leg-section-title">Flight paths</div>
@@ -55,9 +65,25 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map = L.map('map', { center: [35, 0], zoom: 3, zoomControl: false, attributionControl: false, preferCanvas: true });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  maxZoom: 19, subdomains: 'abcd'
-}).addTo(map);
+
+const baseLayers = {
+  voyager:   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',    { maxZoom: 19, subdomains: 'abcd' }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+  topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                            { maxZoom: 17, subdomains: 'abc' }),
+  dark:      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',               { maxZoom: 19, subdomains: 'abcd' }),
+};
+let activeBase = baseLayers.voyager.addTo(map);
+
+document.querySelectorAll('.layer-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.layer;
+    map.removeLayer(activeBase);
+    activeBase = baseLayers[key].addTo(map);
+    activeBase.bringToBack();
+    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
 L.control.attribution({ position: 'bottomleft', prefix: false })
   .addAttribution('© OpenStreetMap © CARTO · Quiet Places Project').addTo(map);
 document.getElementById('zoom-in').onclick = () => map.zoomIn();
