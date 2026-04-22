@@ -56,6 +56,7 @@ LAND_REGIONS = [
     ("South America",   -56.0,  13.0,  -82.0,  -34.0),  # 7
     ("Australia",       -44.0,  -9.0,  113.0,  154.0),  # 8
     ("Northeast",        38.0,  62.0,  -82.0,  -50.0),  # 9 — NYC to Labrador/Newfoundland
+    ("Southeast US",     24.0,  38.0,  -90.0,  -74.0),  # 10 — Florida to Virginia
 ]
 
 MIN_ALT_M         = 300
@@ -231,7 +232,7 @@ def main():
     # Worker split: each worker gets its own output/progress files and region subset
     global OUTPUT_FILE, PROGRESS_FILE
     if args.worker is not None:
-        region_splits = {0: list(range(5)), 1: list(range(5, 10))}
+        region_splits = {0: list(range(5)) + [10], 1: list(range(5, 10))}
         if args.worker not in region_splits:
             print(f"ERROR: --worker must be 0 or 1"); return
         allowed_regions = set(region_splits[args.worker])
