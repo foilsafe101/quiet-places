@@ -9,6 +9,7 @@ Run after each batch to keep the overlay current:
 """
 
 import json
+import math
 import numpy as np
 from pathlib import Path
 
@@ -30,6 +31,17 @@ LON_MIN, LON_MAX = -180.0, 180.0
 
 R, G, B   = 10, 30, 120
 MAX_ALPHA = 210
+
+
+def lat_to_mercy(lat_deg):
+    """Convert latitude (degrees) to Web Mercator Y (radians)."""
+    lat_rad = math.radians(lat_deg)
+    return math.log(math.tan(math.pi / 4 + lat_rad / 2))
+
+
+def mercy_to_lat(y_arr):
+    """Convert Web Mercator Y array (radians) to latitude (degrees)."""
+    return np.degrees(2 * np.arctan(np.exp(y_arr)) - np.pi / 2)
 
 
 def sample_linestring(geom, spacing=0.1):
@@ -99,21 +111,35 @@ def main():
     road_pts = load_road_rail_points().astype(np.float32)
     print(f"  {len(road_pts):,} road/rail sample points")
 
-    # ── Grid ───────────────────────────────────────────────────────
-    lats = np.arange(LAT_MIN, LAT_MAX, RES)
-    lons = np.arange(LON_MIN, LON_MAX, RES)
-    height, width = len(lats), len(lons)
-    print(f"Grid: {width}×{height} = {width*height:,} cells")
+    # ── Web Mercator output grid ───────────────────────────────────
+    # Each pixel maps to a lat/lon via inverse Mercator, so the image
+    # renders without distortion in Leaflet (which uses Web Mercator).
+    mercy_max = lat_to_mercy(LAT_MAX)
+    mercy_min = lat_to_mercy(LAT_MIN)
 
-    grid_lat, grid_lon = np.meshgrid(lats, lons, indexing='ij')
+    PPD    = 1.0 / RES                                          # pixels per degree = 4
+    width  = int((LON_MAX - LON_MIN) * PPD)                    # 1440
+    height = int((mercy_max - mercy_min) / (RES * math.pi / 180))  # ~1020
+
+    print(f"Web Mercator grid: {width}×{height} = {width*height:,} pixels")
+
+    # Row 0 = top (LAT_MAX), row height-1 = bottom (LAT_MIN)
+    row_idx   = np.arange(height, dtype=np.float64)
+    mercy_rows = mercy_max - (row_idx / height) * (mercy_max - mercy_min)
+    lat_rows   = mercy_to_lat(mercy_rows)   # shape (height,)
+
+    # Col 0 = left (LON_MIN), col width-1 = right (LON_MAX)
+    col_idx  = np.arange(width, dtype=np.float64)
+    lon_cols = LON_MIN + (col_idx / width) * (LON_MAX - LON_MIN)   # shape (width,)
+
+    # Full grid of (lat, lon) query points
+    merc_lat, merc_lon = np.meshgrid(lat_rows, lon_cols, indexing='ij')
+    flat_lat = merc_lat.ravel().astype(np.float32)
+    flat_lon = merc_lon.ravel().astype(np.float32)
 
     # Scale lon by cos(mean_lat) for approximate equal-distance querying
-    mean_lat_rad = np.radians(np.mean(lats))
-    cos_lat = float(np.cos(mean_lat_rad))
-
-    flat_lat = grid_lat.ravel()
-    flat_lon = grid_lon.ravel() * cos_lat
-    query_pts = np.column_stack([flat_lat, flat_lon])
+    cos_lat   = float(math.cos(math.radians(float(np.mean(lat_rows)))))
+    query_pts = np.column_stack([flat_lat, flat_lon * cos_lat]).astype(np.float32)
 
     # ── Flight distances ───────────────────────────────────────────
     print("Computing flight distances...")
@@ -142,7 +168,8 @@ def main():
     scores = np.clip((combined_norm - 1.0) / ((QUIET_DEG / NOISY_DEG_FLIGHTS) - 1.0), 0.0, 1.0)
 
     # ── Build RGBA image ───────────────────────────────────────────
-    scores_grid = np.flipud(scores.reshape(height, width))
+    # No flipud needed: row 0 already = top (LAT_MAX) in Mercator grid
+    scores_grid = scores.reshape(height, width)
     alpha = (scores_grid * MAX_ALPHA).astype(np.uint8)
 
     img_arr = np.zeros((height, width, 4), dtype=np.uint8)

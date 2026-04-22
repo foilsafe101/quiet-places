@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.DS_Store
+
+# Merged flight data exceeds GitHub's 100MB limit — served from worker files instead
+docs/flights.json

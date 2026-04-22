@@ -147,12 +147,23 @@ async function loadData() {
   const overlay = document.getElementById('loading-overlay');
   const dataInfo = document.getElementById('data-info');
   try {
-    const res = await fetch('flights.json');
-    if (!res.ok) throw new Error('no data');
-    const data = await res.json();
-    const { lines, dots } = renderTracks(data.tracks || []);
-    const updated = data.meta?.last_updated
-      ? new Date(data.meta.last_updated).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    // Load worker files in parallel; fall back to merged flights.json if needed
+    const results = await Promise.allSettled([
+      fetch('flights_0.json').then(r => r.ok ? r.json() : null),
+      fetch('flights_1.json').then(r => r.ok ? r.json() : null),
+    ]);
+    let tracks = [];
+    let lastUpdated = null;
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        tracks = tracks.concat(r.value.tracks || []);
+        if (r.value.meta?.last_updated) lastUpdated = r.value.meta.last_updated;
+      }
+    }
+    if (!tracks.length) throw new Error('no data');
+    const { lines, dots } = renderTracks(tracks);
+    const updated = lastUpdated
+      ? new Date(lastUpdated).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
       : 'unknown';
     dataInfo.innerHTML = '<span class="highlight">' + lines.toLocaleString() + ' paths, ' + dots.toLocaleString() + ' pts</span> · ' + updated;
   } catch(e) {
