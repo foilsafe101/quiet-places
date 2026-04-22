@@ -125,22 +125,66 @@ map.on('mousemove', e => {
   document.getElementById('coord-display').textContent = e.latlng.lat.toFixed(3) + '° N   ' + e.latlng.lng.toFixed(3) + '° E';
 });
 
-const pathLayer = L.layerGroup().addTo(map);
+// Single-canvas flight renderer — draws all tracks in one stroke call
+const FlightCanvas = L.Layer.extend({
+  initialize() { this._tracks = []; },
+  onAdd(map) {
+    this._map = map;
+    this._canvas = L.DomUtil.create('canvas', '');
+    this._canvas.style.position = 'absolute';
+    this._canvas.style.pointerEvents = 'none';
+    map.getPane('flightPane').appendChild(this._canvas);
+    map.on('moveend zoomend resize', this._redraw, this);
+    this._redraw();
+  },
+  onRemove(map) {
+    L.DomUtil.remove(this._canvas);
+    map.off('moveend zoomend resize', this._redraw, this);
+  },
+  setTracks(tracks) {
+    this._tracks = tracks;
+    this._redraw();
+    let lines = 0, dots = 0;
+    for (const t of tracks) {
+      if (!t.path || !t.path.length) continue;
+      t.path.length >= 2 ? lines++ : dots++;
+    }
+    return { lines, dots };
+  },
+  _redraw() {
+    if (!this._map) return;
+    const map = this._map;
+    const canvas = this._canvas;
+    const size = map.getSize();
+    canvas.width  = size.x;
+    canvas.height = size.y;
+    const topLeft = map.containerPointToLayerPoint([0, 0]);
+    L.DomUtil.setPosition(canvas, topLeft);
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size.x, size.y);
+    ctx.strokeStyle = 'rgb(220,30,30)';
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+    for (const t of this._tracks) {
+      const path = t.path;
+      if (!path || path.length < 2) continue;
+      let p = map.latLngToContainerPoint(path[0]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < path.length; i++) {
+        p = map.latLngToContainerPoint(path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.stroke();
+  }
+});
+
+const flightCanvas = new FlightCanvas();
+flightCanvas.addTo(map);
 
 function renderTracks(tracks) {
-  pathLayer.clearLayers();
-  let lines = 0, dots = 0;
-  tracks.forEach(t => {
-    if (!t.path || t.path.length === 0) return;
-    if (t.path.length >= 2) {
-      L.polyline(t.path, { color: 'rgb(220,30,30)', weight: 1.0, opacity: 1.0, interactive: false, pane: 'flightPane' }).addTo(pathLayer);
-      lines++;
-    } else {
-      L.circleMarker(t.path[0], { radius: 2, color: 'rgb(220,30,30)', fillColor: 'rgb(220,30,30)', fillOpacity: 1.0, opacity: 0, weight: 0, interactive: false, pane: 'flightPane' }).addTo(pathLayer);
-      dots++;
-    }
-  });
-  return { lines, dots };
+  return flightCanvas.setTracks(tracks);
 }
 
 async function loadData() {

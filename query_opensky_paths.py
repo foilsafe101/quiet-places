@@ -46,22 +46,23 @@ SLOTS_PER_HOUR          = 60 // SAMPLE_INTERVAL_MINUTES
 SLOTS_PER_DAY           = HOURS_PER_DAY * SLOTS_PER_HOUR
 
 LAND_REGIONS = [
-    ("North America",    15.0,  72.0, -168.0,  -52.0),
-    ("Europe",           34.0,  72.0,  -25.0,   45.0),
-    ("Middle East",      12.0,  42.0,   25.0,   65.0),
-    ("South Asia",        5.0,  37.0,   60.0,   97.0),
-    ("East Asia",        18.0,  53.0,   97.0,  145.0),
-    ("Southeast Asia",  -10.0,  28.0,   95.0,  141.0),
-    ("Africa",          -35.0,  37.0,  -18.0,   52.0),
-    ("South America",   -56.0,  13.0,  -82.0,  -34.0),
-    ("Australia",       -44.0,  -9.0,  113.0,  154.0),
+    ("North America W",  15.0,  72.0, -168.0,  -82.0),  # 0 — West of Appalachians
+    ("Europe",           34.0,  72.0,  -25.0,   45.0),  # 1
+    ("Middle East",      12.0,  42.0,   25.0,   65.0),  # 2
+    ("South Asia",        5.0,  37.0,   60.0,   97.0),  # 3
+    ("East Asia",        18.0,  53.0,   97.0,  145.0),  # 4
+    ("Southeast Asia",  -10.0,  28.0,   95.0,  141.0),  # 5
+    ("Africa",          -35.0,  37.0,  -18.0,   52.0),  # 6
+    ("South America",   -56.0,  13.0,  -82.0,  -34.0),  # 7
+    ("Australia",       -44.0,  -9.0,  113.0,  154.0),  # 8
+    ("Northeast",        38.0,  62.0,  -82.0,  -50.0),  # 9 — NYC to Labrador/Newfoundland
 ]
 
 MIN_ALT_M         = 300
 MAX_ROWS_PER_SLOT = 3000
 PAUSE_SECONDS     = 3
 MAX_PATH_GAP_S    = 600
-RDP_TOLERANCE     = 0.01   # ~1km at equator
+RDP_TOLERANCE     = 0.1    # ~11km at equator
 
 
 def simplify_path(points, tolerance=RDP_TOLERANCE):
@@ -230,7 +231,7 @@ def main():
     # Worker split: each worker gets its own output/progress files and region subset
     global OUTPUT_FILE, PROGRESS_FILE
     if args.worker is not None:
-        region_splits = {0: list(range(5)), 1: list(range(5, 9))}
+        region_splits = {0: list(range(5)), 1: list(range(5, 10))}
         if args.worker not in region_splits:
             print(f"ERROR: --worker must be 0 or 1"); return
         allowed_regions = set(region_splits[args.worker])
