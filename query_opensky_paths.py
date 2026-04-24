@@ -55,7 +55,7 @@ LAND_REGIONS = [
     ("Africa",          -35.0,  37.0,  -18.0,   52.0),  # 6
     ("South America",   -56.0,  13.0,  -82.0,  -34.0),  # 7
     ("Australia",       -44.0,  -9.0,  113.0,  154.0),  # 8
-    ("Northeast",        38.0,  62.0,  -82.0,  -50.0),  # 9 — NYC to Labrador/Newfoundland
+    ("Northeast",        38.0,  72.0,  -82.0,  -20.0),  # 9 — NYC to Labrador/Newfoundland + N Atlantic
     ("Southeast US",     24.0,  38.0,  -90.0,  -74.0),  # 10 — Florida to Virginia
 ]
 
