@@ -130,22 +130,29 @@ def load_progress():
     return set()
 
 
+def _atomic_write(path, text):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(text)
+    tmp.replace(path)
+
+
 def save_progress(completed):
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump({"completed": sorted(completed)}, f)
+    _atomic_write(PROGRESS_FILE, json.dumps({"completed": sorted(completed)}))
 
 
 def load_flights():
     if OUTPUT_FILE.exists():
-        with open(OUTPUT_FILE) as f:
-            return json.load(f)
+        try:
+            with open(OUTPUT_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            print(f"WARNING: {OUTPUT_FILE} is corrupt or unreadable — starting fresh")
     return {"tracks": [], "meta": {}}
 
 
 def save_flights(data):
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_FILE, "w") as f:
-        json.dump(data, f, separators=(",", ":"))
+    _atomic_write(OUTPUT_FILE, json.dumps(data, separators=(",", ":")))
     kb = OUTPUT_FILE.stat().st_size / 1024
     print(f"  Saved {len(data['tracks'])} tracks ({kb:.0f} KB)")
 

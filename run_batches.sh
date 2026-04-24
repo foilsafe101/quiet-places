@@ -36,18 +36,26 @@ tracks = []
 for i in range(2):
     f = docs / f"flights_{i}.json"
     if f.exists():
-        d = json.load(open(f))
-        tracks.extend(d.get("tracks", []))
+        try:
+            d = json.load(open(f))
+            tracks.extend(d.get("tracks", []))
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"  WARNING: skipping {f} ({e})")
 
-merged = {"tracks": tracks, "meta": {
-    "last_updated": __import__("datetime").datetime.utcnow().isoformat() + "Z",
-    "total_tracks": len(tracks),
-    "source": "opensky-trino-paths",
-}}
-with open(docs / "flights.json", "w") as f:
-    json.dump(merged, f, separators=(",", ":"))
-kb = (docs / "flights.json").stat().st_size / 1024
-print(f"  Merged {len(tracks)} tracks into flights.json ({kb:.0f} KB)")
+if not tracks:
+    print("  WARNING: no tracks to merge, skipping flights.json update")
+else:
+    merged = {"tracks": tracks, "meta": {
+        "last_updated": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "total_tracks": len(tracks),
+        "source": "opensky-trino-paths",
+    }}
+    tmp = docs / "flights.json.tmp"
+    with open(tmp, "w") as f:
+        json.dump(merged, f, separators=(",", ":"))
+    tmp.replace(docs / "flights.json")
+    kb = (docs / "flights.json").stat().st_size / 1024
+    print(f"  Merged {len(tracks)} tracks into flights.json ({kb:.0f} KB)")
 PYEOF
   fi
 

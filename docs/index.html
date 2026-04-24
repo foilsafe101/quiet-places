@@ -56,7 +56,7 @@
   <hr class="layer-divider" />
   <div class="layer-row">
     <label style="display:flex;align-items:center;gap:5px;"><div class="flight-swatch"></div>Flights</label>
-    <input type="range" id="sl-flights" min="0" max="100" value="70">
+    <input type="range" id="sl-flights" min="0" max="100" value="0">
   </div>
 </div>
 <div id="controls">
@@ -114,8 +114,20 @@ const setFlightOpacity = () => {
   flightSlider.style.setProperty('--val', flightSlider.value + '%');
 };
 flightSlider.style.setProperty('--val', flightSlider.value + '%');
-flightSlider.addEventListener('input', setFlightOpacity);
 setFlightOpacity();
+
+let flightDataLoaded = false;
+let flightDataLoading = false;
+flightSlider.addEventListener('input', async () => {
+  setFlightOpacity();
+  if (flightSlider.value > 0 && !flightDataLoaded && !flightDataLoading) {
+    flightDataLoading = true;
+    document.getElementById('data-info').textContent = 'Loading flights…';
+    await loadData();
+    flightDataLoaded = true;
+    flightDataLoading = false;
+  }
+});
 
 L.control.attribution({ position: 'bottomleft', prefix: false })
   .addAttribution('© OpenStreetMap © CARTO · Quiet Places Project').addTo(map);
@@ -159,6 +171,11 @@ const FlightCanvas = L.Layer.extend({
     canvas.width  = size.x;
     canvas.height = size.y;
 
+    // Position canvas in layer-point space so the pane's CSS transform
+    // tracks the map during pan without needing per-move redraws.
+    const topLeft = map.containerPointToLayerPoint([0, 0]);
+    L.DomUtil.setPosition(canvas, topLeft);
+
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, size.x, size.y);
     ctx.strokeStyle = 'rgb(220,30,30)';
@@ -169,11 +186,11 @@ const FlightCanvas = L.Layer.extend({
     for (const t of this._tracks) {
       const path = t.path;
       if (!path || path.length < 2) continue;
-      let p = map.latLngToContainerPoint(path[0]);
-      ctx.moveTo(p.x, p.y);
+      let lp = map.latLngToLayerPoint(path[0]);
+      ctx.moveTo(lp.x - topLeft.x, lp.y - topLeft.y);
       for (let i = 1; i < path.length; i++) {
-        p = map.latLngToContainerPoint(path[i]);
-        ctx.lineTo(p.x, p.y);
+        lp = map.latLngToLayerPoint(path[i]);
+        ctx.lineTo(lp.x - topLeft.x, lp.y - topLeft.y);
       }
       if (++count % BATCH === 0) { ctx.stroke(); ctx.beginPath(); }
     }
@@ -189,10 +206,8 @@ function renderTracks(tracks) {
 }
 
 async function loadData() {
-  const overlay = document.getElementById('loading-overlay');
   const dataInfo = document.getElementById('data-info');
   try {
-    // Load worker files in parallel; fall back to merged flights.json if needed
     const results = await Promise.allSettled([
       fetch('flights_0.json').then(r => r.ok ? r.json() : null),
       fetch('flights_1.json').then(r => r.ok ? r.json() : null),
@@ -212,12 +227,15 @@ async function loadData() {
       : 'unknown';
     dataInfo.innerHTML = '<span class="highlight">' + lines.toLocaleString() + ' paths, ' + dots.toLocaleString() + ' pts</span> · ' + updated;
   } catch(e) {
-    dataInfo.innerHTML = '<span style="color:#8a7e6e">No data</span>';
+    dataInfo.innerHTML = '<span style="color:#8a7e6e">No flight data</span>';
   }
-  overlay.classList.add('hidden');
-  setTimeout(() => overlay.remove(), 600);
 }
-loadData();
+
+// Hide loading overlay immediately — flight data loads on demand
+const overlay = document.getElementById('loading-overlay');
+overlay.classList.add('hidden');
+setTimeout(() => overlay.remove(), 600);
+document.getElementById('data-info').textContent = 'Flights off — drag slider to load';
 </script>
 </body>
 </html>
