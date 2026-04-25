@@ -17,12 +17,13 @@ Usage:
 """
 
 import argparse
+import gzip
 import json
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-OUTPUT_FILE   = Path(__file__).parent / "docs" / "flights.json"
+OUTPUT_FILE   = Path(__file__).parent / "docs" / "flights.json.gz"
 PROGRESS_FILE = Path(__file__).parent / "query_progress_paths.json"
 
 SAMPLE_WEEKS_2025 = [
@@ -136,25 +137,41 @@ def _atomic_write(path, text):
     tmp.replace(path)
 
 
+def _atomic_write_gz(path, text):
+    tmp = path.with_suffix(".tmp")
+    with gzip.open(tmp, "wt", encoding="utf-8") as f:
+        f.write(text)
+    tmp.replace(path)
+
+
 def save_progress(completed):
     _atomic_write(PROGRESS_FILE, json.dumps({"completed": sorted(completed)}))
 
 
 def load_flights():
+    # Prefer .json.gz; fall back to legacy .json if present.
     if OUTPUT_FILE.exists():
         try:
-            with open(OUTPUT_FILE) as f:
+            with gzip.open(OUTPUT_FILE, "rt", encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except (OSError, json.JSONDecodeError):
             print(f"WARNING: {OUTPUT_FILE} is corrupt or unreadable — starting fresh")
+            return {"tracks": [], "meta": {}}
+    legacy = OUTPUT_FILE.with_suffix("")  # strip the .gz
+    if legacy.exists():
+        try:
+            with open(legacy) as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            print(f"WARNING: legacy {legacy} is corrupt or unreadable — starting fresh")
     return {"tracks": [], "meta": {}}
 
 
 def save_flights(data):
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write(OUTPUT_FILE, json.dumps(data, separators=(",", ":")))
+    _atomic_write_gz(OUTPUT_FILE, json.dumps(data, separators=(",", ":")))
     kb = OUTPUT_FILE.stat().st_size / 1024
-    print(f"  Saved {len(data['tracks'])} tracks ({kb:.0f} KB)")
+    print(f"  Saved {len(data['tracks'])} tracks ({kb:.0f} KB gz)")
 
 
 class DayAccumulator:
@@ -243,7 +260,7 @@ def main():
         if args.worker not in region_splits:
             print(f"ERROR: --worker must be 0 or 1"); return
         allowed_regions = set(region_splits[args.worker])
-        OUTPUT_FILE   = Path(__file__).parent / "docs" / f"flights_{args.worker}.json"
+        OUTPUT_FILE   = Path(__file__).parent / "docs" / f"flights_{args.worker}.json.gz"
         PROGRESS_FILE = Path(__file__).parent / f"query_progress_paths_{args.worker}.json"
         print(f"Worker {args.worker}: regions {sorted(allowed_regions)}")
     else:

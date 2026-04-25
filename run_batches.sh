@@ -28,34 +28,36 @@ while true; do
   # Merge worker files into flights.json if running in parallel
   if [ -n "$WORKER" ]; then
     $VENV - << 'PYEOF'
-import json
+import gzip, json
 from pathlib import Path
 
 docs = Path("docs")
 tracks = []
 for i in range(2):
-    f = docs / f"flights_{i}.json"
+    f = docs / f"flights_{i}.json.gz"
     if f.exists():
         try:
-            d = json.load(open(f))
+            with gzip.open(f, "rt", encoding="utf-8") as fh:
+                d = json.load(fh)
             tracks.extend(d.get("tracks", []))
         except (json.JSONDecodeError, OSError) as e:
             print(f"  WARNING: skipping {f} ({e})")
 
 if not tracks:
-    print("  WARNING: no tracks to merge, skipping flights.json update")
+    print("  WARNING: no tracks to merge, skipping flights.json.gz update")
 else:
     merged = {"tracks": tracks, "meta": {
         "last_updated": __import__("datetime").datetime.utcnow().isoformat() + "Z",
         "total_tracks": len(tracks),
         "source": "opensky-trino-paths",
     }}
-    tmp = docs / "flights.json.tmp"
-    with open(tmp, "w") as f:
-        json.dump(merged, f, separators=(",", ":"))
-    tmp.replace(docs / "flights.json")
-    kb = (docs / "flights.json").stat().st_size / 1024
-    print(f"  Merged {len(tracks)} tracks into flights.json ({kb:.0f} KB)")
+    out = docs / "flights.json.gz"
+    tmp = docs / "flights.json.gz.tmp"
+    with gzip.open(tmp, "wt", encoding="utf-8") as fh:
+        json.dump(merged, fh, separators=(",", ":"))
+    tmp.replace(out)
+    kb = out.stat().st_size / 1024
+    print(f"  Merged {len(tracks)} tracks into flights.json.gz ({kb:.0f} KB)")
 PYEOF
   fi
 
@@ -63,7 +65,7 @@ PYEOF
   $VENV generate_quiet_overlay.py 2>&1 | tee -a $LOG
 
   # Commit and push
-  git add docs/flights_*.json docs/quiet_overlay.png query_progress_paths*.json 2>/dev/null
+  git add docs/flights_*.json.gz docs/flights.json.gz docs/quiet_overlay.png query_progress_paths*.json 2>/dev/null
   SLOTS=$($VENV -c "
 import json, glob
 total = 0

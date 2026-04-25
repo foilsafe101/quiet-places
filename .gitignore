@@ -4,5 +4,12 @@ __pycache__/
 *.egg-info/
 .DS_Store
 
-# Merged flight data exceeds GitHub's 100MB limit — served from worker files instead
+# Merged flight data — served from worker files instead
 docs/flights.json
+docs/flights.json.gz
+# Legacy uncompressed worker files — superseded by .json.gz
+docs/flights_0.json
+docs/flights_1.json
+docs/flights_1.json.bak
+docs/flights_1_recovered.json
+*.tmp

@@ -8,13 +8,14 @@ Run after each batch to keep the overlay current:
   .venv/bin/python generate_quiet_overlay.py
 """
 
+import gzip
 import json
 import math
 import numpy as np
 from pathlib import Path
 
 OUTPUT_FILE   = Path("docs/quiet_overlay.png")
-FLIGHTS_FILE  = Path("docs/flights.json")
+FLIGHTS_FILE  = Path("docs/flights.json.gz")
 ROADS_ZIP     = Path("data/ne_10m_roads.zip")
 RAILS_ZIP     = Path("data/ne_10m_railroads.zip")
 
@@ -100,8 +101,13 @@ def main():
 
     # ── Flight points ──────────────────────────────────────────────
     print("Loading flight tracks...")
-    with open(FLIGHTS_FILE) as f:
-        data = json.load(f)
+    if FLIGHTS_FILE.exists():
+        with gzip.open(FLIGHTS_FILE, "rt", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        legacy = FLIGHTS_FILE.with_suffix("")  # strip .gz
+        with open(legacy) as f:
+            data = json.load(f)
     tracks = data.get("tracks", [])
     flight_pts = np.array([p for t in tracks for p in t.get("path", [])], dtype=np.float32)
     print(f"  {len(tracks):,} tracks, {len(flight_pts):,} points")

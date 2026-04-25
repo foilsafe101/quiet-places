@@ -208,9 +208,26 @@ function renderTracks(tracks) {
 async function loadData() {
   const dataInfo = document.getElementById('data-info');
   try {
+    const fetchGz = async (url) => {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      // If response is already decoded (Content-Encoding: gzip) just .json()
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return r.json();
+      // Otherwise manually decompress
+      try {
+        const ds = new DecompressionStream('gzip');
+        const stream = r.body.pipeThrough(ds);
+        const text = await new Response(stream).text();
+        return JSON.parse(text);
+      } catch (e) {
+        // Fallback: server may have already decoded it
+        try { return JSON.parse(await r.text()); } catch { return null; }
+      }
+    };
     const results = await Promise.allSettled([
-      fetch('flights_0.json').then(r => r.ok ? r.json() : null),
-      fetch('flights_1.json').then(r => r.ok ? r.json() : null),
+      fetchGz('flights_0.json.gz'),
+      fetchGz('flights_1.json.gz'),
     ]);
     let tracks = [];
     let lastUpdated = null;
