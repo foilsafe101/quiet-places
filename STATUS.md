@@ -5,7 +5,7 @@
 ## What it is
 Web map identifying locations with no audible anthropogenic sound (no flights, no roads, no rail). Leaflet frontend, flight data from OpenSky Trino, quiet zone overlay computed from flight + road/rail proximity.
 
-- **Repo:** `/Users/markustribus/quiet-places` (local Mac)
+- **Repo:** `/Users/Shared/shhh` (local Mac)
 - **Live:** https://foilsafe101.github.io/shhh/ (GitHub Pages from `/docs`)
 - **Audience:** Mark Tribe, SVA faculty NYC, field-recording scouting (Northeast US priority)
 
@@ -62,7 +62,7 @@ Mark approved these but wants to wait for better data coverage. Cron should noti
 ## Architecture decisions / declined options
 - **Cloud VM**: declined — running on Mark's Mac with `caffeinate -dims`
 - **Web Workers for rendering**: declined — canvas layer is fast enough
-- **Moving project to /Users/foil**: declined — stays under markustribus
+- **Moving project to /Users/foil**: declined — moved instead to `/Users/Shared/shhh` (neutral, group-writable)
 - **PMTiles tile-based rendering**: deferred — revisit if rendering slows again
 
 ## How to verify workers are running
@@ -72,7 +72,7 @@ ps aux | grep -E "run_batches|query_opensky" | grep -v grep
 
 ## How to check progress
 ```
-cd /Users/markustribus/quiet-places && .venv/bin/python -c "
+cd /Users/Shared/shhh && .venv/bin/python -c "
 import json, glob
 total = sum(len(json.load(open(f)).get('completed', [])) for f in glob.glob('query_progress_paths*.json'))
 print(f'{total} / 362880 ({100*total/362880:.1f}%)')
@@ -81,7 +81,7 @@ print(f'{total} / 362880 ({100*total/362880:.1f}%)')
 
 ## How to restart workers (if killed)
 ```
-cd /Users/markustribus/quiet-places
+cd /Users/Shared/shhh
 nohup bash run_batches.sh 0 > /tmp/worker0.log 2>&1 &
 nohup bash run_batches.sh 1 > /tmp/worker1.log 2>&1 &
 ```

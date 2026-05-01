@@ -3,7 +3,7 @@
 #   worker: 0 (regions 0-4) or 1 (regions 5-8) or omitted (all regions, single process)
 # Runs continuous 200-slot batches, commits+pushes after each.
 
-cd /Users/markustribus/quiet-places
+cd /Users/Shared/shhh
 VENV=.venv/bin/python
 BATCH=200
 WORKER=${1:-""}

@@ -29,10 +29,10 @@ https://github.com/foilsafe101/shhh
 ## Users / machines
 - `foil` — non-admin macOS user, runs Claude Code (current user)
 - `markustribus` — admin macOS user, owns machine
-- quiet-places folder: /Users/markustribus/quiet-places (chowned to foil Apr 18)
+- project folder: /Users/Shared/shhh (group-writable, owned by foil:staff)
 
 ## Python environment
-- .venv at ~/quiet-places/.venv
+- .venv at /Users/Shared/shhh/.venv
 - Run scripts with: .venv/bin/python <script>
 - pyopensky 2.16 installed
 
