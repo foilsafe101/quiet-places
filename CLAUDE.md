@@ -73,7 +73,6 @@ North America, Europe, Middle East, South Asia, East Asia, Southeast Asia, Afric
 - Toggle button to show/hide flight paths
 - Loading overlay with spinner
 - Status bar shows track count and last updated date
-- The mqp/ folder (from earlier Desktop session) has a polished alternative version
 
 ## Pending improvements
 - Layer switcher (like Gaia GPS): Default/Voyager, Land Cover (ESA WorldCover), Terrain, Satellite
