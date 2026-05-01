@@ -39,12 +39,22 @@
     #loading-overlay p { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #8a7e6e; }
     .spinner { width: 28px; height: 28px; border: 1.5px solid rgba(0,0,0,0.08); border-top-color: rgba(180,60,30,0.6); border-radius: 50%; animation: spin 1.2s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #title-panel { cursor: pointer; transition: background 0.15s; }
+    #title-panel:hover { background: rgba(240,236,228,0.98); }
+    #about-backdrop { position: absolute; inset: 0; z-index: 3000; background: rgba(44,40,32,0.45); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    #about-backdrop.visible { opacity: 1; pointer-events: auto; }
+    #about-modal { background: rgba(255,252,245,0.98); border: 0.5px solid rgba(0,0,0,0.12); border-radius: 6px; padding: 28px 32px; max-width: 520px; width: calc(100vw - 48px); position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+    #about-modal h2 { font-size: 16px; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: #3a3228; margin-bottom: 14px; }
+    #about-modal p { font-size: 13px; line-height: 1.6; color: #5a4e3e; margin-bottom: 12px; }
+    #about-modal p:last-child { margin-bottom: 0; }
+    #about-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 20px; line-height: 1; color: #8a7e6e; cursor: pointer; padding: 4px 6px; }
+    #about-close:hover { color: #3a3228; }
   </style>
 </head>
 <body>
 <div id="loading-overlay"><div class="spinner"></div><p>Loading flight history…</p></div>
 <div id="map"></div>
-<div class="panel" id="title-panel"><h1>Shhh</h1><p>No audible anthropogenic sound</p></div>
+<div class="panel" id="title-panel"><h1>Shhh</h1><p>A map of quiet places</p></div>
 <div class="panel" id="layers-panel">
   <div class="layers-title">Layers</div>
   <div class="layer-row"><label>Map</label><input type="range" id="sl-voyager"   min="0" max="100" value="100"></div>
@@ -66,6 +76,14 @@
 <div class="panel" id="status-bar">
   <p id="coord-display">Hover to show coordinates</p>
   <p id="data-info">Loading…</p>
+</div>
+<div id="about-backdrop">
+  <div id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <button id="about-close" aria-label="Close">×</button>
+    <h2 id="about-title">About Shhh</h2>
+    <p>Shhh is a dynamic, web-based map that locates places where little or no anthropogenic sound can be heard — no airplanes, motor vehicles, trains, explosions, machines, factories, wind turbines, human settlements, humans, or pets. In practical terms, that means no nearby roads or active railroad tracks, and no aircraft flying within ~20 miles.</p>
+    <p>Users can pan, zoom, and select various layers. Flights show up as red lines and are updated periodically with new data from OpenSky. Quiet zones show up in blue.</p>
+  </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -253,6 +271,19 @@ const overlay = document.getElementById('loading-overlay');
 overlay.classList.add('hidden');
 setTimeout(() => overlay.remove(), 600);
 document.getElementById('data-info').textContent = 'Flights off — drag slider to load';
+
+// About modal — auto-show on first visit, reopen via title panel
+const aboutBackdrop = document.getElementById('about-backdrop');
+const showAbout = () => aboutBackdrop.classList.add('visible');
+const hideAbout = () => aboutBackdrop.classList.remove('visible');
+document.getElementById('title-panel').addEventListener('click', showAbout);
+document.getElementById('about-close').addEventListener('click', hideAbout);
+aboutBackdrop.addEventListener('click', e => { if (e.target === aboutBackdrop) hideAbout(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideAbout(); });
+if (!localStorage.getItem('shhh_about_seen')) {
+  showAbout();
+  localStorage.setItem('shhh_about_seen', '1');
+}
 </script>
 </body>
 </html>

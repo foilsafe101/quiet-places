@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "quiet-places",
+      "name": "shhh",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "docs"],
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "/Users/Shared/shhh/docs"],
       "port": 8765
     }
   ]
