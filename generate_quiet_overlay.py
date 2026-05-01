@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-generate_quiet_overlay.py — Quiet Places Project
+generate_quiet_overlay.py — Shhh
 Generates docs/quiet_overlay.png: a world grid colored dark blue
 where areas are far from all noise sources (flights, roads, railroads).
 

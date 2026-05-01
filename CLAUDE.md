@@ -1,7 +1,7 @@
-# Quiet Places — Project Context
+# Shhh — Project Context
 
 ## Vision
-"Quiet Places" is a research art project by Mark (faculty, School of Visual Arts, NYC). The goal is a "Map of Quiet Places" (MQP): a dynamic, web-based map that helps locate the quietest places on Earth — meaning no audible anthropogenic sound (no airplanes, motor vehicles, trains, weapons, or industry). In practical terms: no nearby roads or active railroad tracks, and no airplanes flying within 20 miles.
+"Shhh" is a research art project by Mark (faculty, School of Visual Arts, NYC). The goal is a dynamic, web-based map that helps locate the quietest places on Earth — meaning no audible anthropogenic sound (no airplanes, motor vehicles, trains, weapons, or industry). In practical terms: no nearby roads or active railroad tracks, and no airplanes flying within 20 miles.
 
 The map should:
 - Be pannable and zoomable like Google Maps

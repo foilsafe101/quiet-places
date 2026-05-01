@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-fetch_flights.py - Quiet Places Project
+fetch_flights.py - Shhh
 Fetches live aircraft positions from adsb.lol (free, no API key required)
 and appends them to flights.json.
 
@@ -75,7 +75,7 @@ def fetch_region(name, lat, lon):
     """Fetch aircraft within 250nm of a lat/lon point."""
     url = f"https://api.adsb.lol/v2/lat/{lat}/lon/{lon}/dist/250"
     try:
-        r = requests.get(url, timeout=15, headers={"User-Agent": "quiet-places-art-project"})
+        r = requests.get(url, timeout=15, headers={"User-Agent": "shhh-art-project"})
         r.raise_for_status()
         data = r.json()
         ac = data.get("ac", [])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-query_opensky_paths.py - Quiet Places Project
+query_opensky_paths.py - Shhh
 Queries OpenSky Trino for real connected flight paths using 3-minute sampling.
 
 Strategy:

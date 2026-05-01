@@ -1,4 +1,4 @@
-# Quiet Places — Map of Quiet Places (MQP)
+# Shhh
 
 A dynamic web map showing where on Earth you can stand without hearing any human-made sound: no airplanes, roads, trains, or industry.
 

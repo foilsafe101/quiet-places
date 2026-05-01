@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Map of Quiet Places</title>
+  <title>Shhh</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,7 +44,7 @@
 <body>
 <div id="loading-overlay"><div class="spinner"></div><p>Loading flight history…</p></div>
 <div id="map"></div>
-<div class="panel" id="title-panel"><h1>Map of Quiet Places</h1><p>No audible anthropogenic sound</p></div>
+<div class="panel" id="title-panel"><h1>Shhh</h1><p>No audible anthropogenic sound</p></div>
 <div class="panel" id="layers-panel">
   <div class="layers-title">Layers</div>
   <div class="layer-row"><label>Map</label><input type="range" id="sl-voyager"   min="0" max="100" value="100"></div>
@@ -130,7 +130,7 @@ flightSlider.addEventListener('input', async () => {
 });
 
 L.control.attribution({ position: 'bottomleft', prefix: false })
-  .addAttribution('© OpenStreetMap © CARTO · Quiet Places Project').addTo(map);
+  .addAttribution('© OpenStreetMap © CARTO · Shhh').addTo(map);
 document.getElementById('zoom-in').onclick = () => map.zoomIn();
 document.getElementById('zoom-out').onclick = () => map.zoomOut();
 map.on('mousemove', e => {
