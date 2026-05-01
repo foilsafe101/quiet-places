@@ -6,7 +6,7 @@
 Web map identifying locations with no audible anthropogenic sound (no flights, no roads, no rail). Leaflet frontend, flight data from OpenSky Trino, quiet zone overlay computed from flight + road/rail proximity.
 
 - **Repo:** `/Users/markustribus/quiet-places` (local Mac)
-- **Live:** https://foilsafe101.github.io/quiet-places/ (GitHub Pages from `/docs`)
+- **Live:** https://foilsafe101.github.io/shhh/ (GitHub Pages from `/docs`)
 - **Audience:** Mark Tribe, SVA faculty NYC, field-recording scouting (Northeast US priority)
 
 ## Key files

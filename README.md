@@ -21,7 +21,7 @@ For full historical dataset (2013–present): https://opensky-network.org/data/i
 
 ## File structure
 
-    quiet-places/
+    shhh/
     ├── fetch_flights.py
     ├── requirements.txt
     ├── .github/workflows/fetch-nightly.yml

@@ -18,10 +18,10 @@ The map should:
 - Small planes and helicopters fly lower and are louder close up; altitude-dependent rendering is a future enhancement
 
 ## Live map
-https://foilsafe101.github.io/quiet-places/
+https://foilsafe101.github.io/shhh/
 
 ## Repo
-https://github.com/foilsafe101/quiet-places
+https://github.com/foilsafe101/shhh
 - Branch: main
 - GitHub Pages: served from /docs folder
 - Auth: Personal access token embedded in remote URL (set via git remote set-url)
