@@ -47,22 +47,47 @@ SLOTS_PER_HOUR          = 60 // SAMPLE_INTERVAL_MINUTES
 SLOTS_PER_DAY           = HOURS_PER_DAY * SLOTS_PER_HOUR
 
 LAND_REGIONS = [
-    ("North America W",  15.0,  72.0, -168.0,  -82.0),  # 0 — West of Appalachians
-    ("Europe",           34.0,  72.0,  -25.0,   45.0),  # 1
-    ("Middle East",      12.0,  42.0,   25.0,   65.0),  # 2
-    ("South Asia",        5.0,  37.0,   60.0,   97.0),  # 3
-    ("East Asia",        18.0,  53.0,   97.0,  145.0),  # 4
-    ("Southeast Asia",  -10.0,  28.0,   95.0,  141.0),  # 5
-    ("Africa",          -35.0,  37.0,  -18.0,   52.0),  # 6
-    ("South America",   -56.0,  13.0,  -82.0,  -34.0),  # 7
-    ("Australia",       -44.0,  -9.0,  113.0,  154.0),  # 8
-    ("Northeast",        38.0,  72.0,  -82.0,  -20.0),  # 9 — NYC to Labrador/Newfoundland + N Atlantic
-    ("Southeast US",     24.0,  38.0,  -90.0,  -74.0),  # 10 — Florida to Virginia
+    # 30°×60° uniform global grid, 5 lat bands × 6 lon columns, -60° to 90°N
+    # Row 0: 60–90N (Arctic)
+    ("Arctic W",           60.0,  90.0, -180.0, -120.0),  # 0
+    ("Arctic NE America",  60.0,  90.0, -120.0,  -60.0),  # 1
+    ("Arctic N Atlantic",  60.0,  90.0,  -60.0,    0.0),  # 2
+    ("Arctic Europe",      60.0,  90.0,    0.0,   60.0),  # 3
+    ("Arctic Russia W",    60.0,  90.0,   60.0,  120.0),  # 4
+    ("Arctic Russia E",    60.0,  90.0,  120.0,  180.0),  # 5
+    # Row 1: 30–60N
+    ("NW Pacific",         30.0,  60.0, -180.0, -120.0),  # 6
+    ("North America C",    30.0,  60.0, -120.0,  -60.0),  # 7
+    ("North Atlantic",     30.0,  60.0,  -60.0,    0.0),  # 8
+    ("Europe W Russia",    30.0,  60.0,    0.0,   60.0),  # 9
+    ("C Asia Siberia",     30.0,  60.0,   60.0,  120.0),  # 10
+    ("E Asia NE Pacific",  30.0,  60.0,  120.0,  180.0),  # 11
+    # Row 2: 0–30N
+    ("C Pacific E",         0.0,  30.0, -180.0, -120.0),  # 12
+    ("Mexico C America",    0.0,  30.0, -120.0,  -60.0),  # 13
+    ("Caribbean N Brazil",  0.0,  30.0,  -60.0,    0.0),  # 14
+    ("N Africa Arabia",     0.0,  30.0,    0.0,   60.0),  # 15
+    ("S Asia",              0.0,  30.0,   60.0,  120.0),  # 16
+    ("SE Asia W Pacific",   0.0,  30.0,  120.0,  180.0),  # 17
+    # Row 3: -30–0
+    ("S Pacific E",       -30.0,   0.0, -180.0, -120.0),  # 18
+    ("S Pacific Peru",    -30.0,   0.0, -120.0,  -60.0),  # 19
+    ("Brazil S Atlantic", -30.0,   0.0,  -60.0,    0.0),  # 20
+    ("C Africa Indian W", -30.0,   0.0,    0.0,   60.0),  # 21
+    ("Indian Ocean E",    -30.0,   0.0,   60.0,  120.0),  # 22
+    ("Coral Sea Pacific", -30.0,   0.0,  120.0,  180.0),  # 23
+    # Row 4: -60–-30
+    ("S Pacific W",       -60.0, -30.0, -180.0, -120.0),  # 24
+    ("S Pacific Chile",   -60.0, -30.0, -120.0,  -60.0),  # 25
+    ("S Atlantic",        -60.0, -30.0,  -60.0,    0.0),  # 26
+    ("S Indian W",        -60.0, -30.0,    0.0,   60.0),  # 27
+    ("S Indian E",        -60.0, -30.0,   60.0,  120.0),  # 28
+    ("Southern Ocean NZ", -60.0, -30.0,  120.0,  180.0),  # 29
 ]
 
 MIN_ALT_M         = 300
 MAX_ROWS_PER_SLOT = 3000
-PAUSE_SECONDS     = 3
+PAUSE_SECONDS     = 30
 MAX_PATH_GAP_S    = 600
 RDP_TOLERANCE     = 0.1    # ~11km at equator
 
@@ -256,7 +281,7 @@ def main():
     # Worker split: each worker gets its own output/progress files and region subset
     global OUTPUT_FILE, PROGRESS_FILE
     if args.worker is not None:
-        region_splits = {0: list(range(5)) + [10], 1: list(range(5, 10))}
+        region_splits = {0: list(range(15)), 1: list(range(15, 30))}
         if args.worker not in region_splits:
             print(f"ERROR: --worker must be 0 or 1"); return
         allowed_regions = set(region_splits[args.worker])
