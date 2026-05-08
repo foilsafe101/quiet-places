@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#e8e4d9" />
   <title>Shhh</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -50,13 +52,80 @@
     #about-modal p:last-child { margin-bottom: 0; }
     #about-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 20px; line-height: 1; color: #8a7e6e; cursor: pointer; padding: 4px 6px; }
     #about-close:hover { color: #3a3228; }
+
+    /* Layers toggle button — hidden on desktop, visible on mobile */
+    #layers-toggle {
+      position: absolute; z-index: 1000;
+      top: 8px; right: 8px;
+      width: 40px; height: 40px;
+      background: rgba(255,252,245,0.92);
+      border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 6px;
+      color: #5a4e3e; font-size: 16px;
+      display: none;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    #layers-close { display: none; }
+
+    /* ── Mobile (≤ 600px) ────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      #title-panel { top: 8px; left: 8px; padding: 8px 12px; max-width: calc(100% - 64px); }
+      #title-panel h1 { font-size: 13px; letter-spacing: 0.10em; }
+      #title-panel p { font-size: 10px; }
+
+      /* Layers panel: hidden by default, slides up when toggled */
+      #layers-panel {
+        top: auto; right: 8px; left: 8px;
+        bottom: 8px; padding: 14px 16px 12px;
+        max-width: none;
+        transform: translateY(calc(100% + 24px));
+        transition: transform 0.25s ease;
+      }
+      #layers-panel.open { transform: translateY(0); }
+      #layers-toggle { display: flex; }
+      #layers-close {
+        display: block; position: absolute; top: 4px; right: 8px;
+        background: none; border: none; font-size: 22px; line-height: 1;
+        color: #8a7e6e; cursor: pointer; padding: 6px 10px;
+      }
+      .layer-row label { width: auto; flex: 0 0 auto; min-width: 80px; font-size: 12px; }
+      .layer-row input[type=range] { height: 18px; }
+      .layer-row input[type=range]::-webkit-slider-thumb { width: 16px; height: 16px; }
+
+      /* Status bar moves to top, smaller, no coord display (hover-only on touch) */
+      #status-bar {
+        top: 56px; right: 8px; bottom: auto;
+        padding: 4px 8px;
+      }
+      #coord-display { display: none; }
+      #status-bar p { font-size: 9px; line-height: 1.5; }
+
+      /* Bigger zoom buttons for thumb */
+      #controls { bottom: 80px; left: 8px; gap: 6px; }
+      .ctrl-btn { width: 40px; height: 40px; font-size: 20px; }
+      .leaflet-bottom.leaflet-left { left: 60px; bottom: 60px; }
+
+      /* About modal: tighter padding */
+      #about-modal { padding: 22px 24px; }
+      #about-modal h2 { font-size: 14px; margin-bottom: 12px; }
+      #about-modal p { font-size: 12px; line-height: 1.55; }
+      #about-close { font-size: 24px; padding: 8px 10px; }
+    }
+
+    /* Touch devices specifically — slightly larger slider thumbs even on tablets */
+    @media (pointer: coarse) and (min-width: 601px) {
+      .layer-row input[type=range]::-webkit-slider-thumb { width: 14px; height: 14px; }
+    }
   </style>
 </head>
 <body>
 <div id="loading-overlay"><div class="spinner"></div><p>Loading flight history…</p></div>
 <div id="map"></div>
 <div class="panel" id="title-panel"><h1>Shhh</h1><p>A map of quiet places</p></div>
+<button id="layers-toggle" aria-label="Toggle layers">≡</button>
 <div class="panel" id="layers-panel">
+  <button id="layers-close" aria-label="Close layers">×</button>
   <div class="layers-title">Layers</div>
   <div class="layer-row"><label>Map</label><input type="range" id="sl-voyager"   min="0" max="100" value="100"></div>
   <div class="layer-row"><label>Satellite</label><input type="range" id="sl-satellite" min="0" max="100" value="0"></div>
@@ -288,6 +357,19 @@ if (!localStorage.getItem('shhh_about_seen')) {
   showAbout();
   localStorage.setItem('shhh_about_seen', '1');
 }
+
+// Mobile layers panel toggle
+const layersPanel  = document.getElementById('layers-panel');
+const layersToggle = document.getElementById('layers-toggle');
+const layersClose  = document.getElementById('layers-close');
+layersToggle.addEventListener('click', () => layersPanel.classList.add('open'));
+layersClose .addEventListener('click', () => layersPanel.classList.remove('open'));
+// Close layers panel when tapping outside it (mobile)
+document.addEventListener('click', e => {
+  if (!layersPanel.classList.contains('open')) return;
+  if (layersPanel.contains(e.target) || layersToggle.contains(e.target)) return;
+  layersPanel.classList.remove('open');
+});
 </script>
 </body>
 </html>
