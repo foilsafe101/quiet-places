@@ -6,9 +6,9 @@
     "weeks": 12
   },
   "progress": {
-    "completed": 43002,
-    "remaining": 259398,
-    "pct": 14.22
+    "completed": 43202,
+    "remaining": 259198,
+    "pct": 14.29
   },
   "rate": {
     "per_hour": null,
@@ -20,10 +20,10 @@
     "estimated_finish": null
   },
   "current": {
-    "slot": "2025-01-08 00:24",
-    "region": "Southern Ocean NZ"
+    "slot": "2025-01-08 03:12",
+    "region": "S Pacific Peru"
   },
-  "last_update": "2026-05-08T20:47:29.474382+00:00",
+  "last_update": "2026-05-08T20:48:04.813847+00:00",
   "history": [
     {
       "ts": "2026-05-08T17:00:17.723829+00:00",
@@ -60,6 +60,10 @@
     {
       "ts": "2026-05-08T20:47:29.474382+00:00",
       "count": 43002
+    },
+    {
+      "ts": "2026-05-08T20:48:04.813847+00:00",
+      "count": 43202
     }
   ]
 }
