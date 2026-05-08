@@ -4,9 +4,8 @@ __pycache__/
 *.egg-info/
 .DS_Store
 
-# Merged flight data — served from worker files instead
+# Uncompressed merged flight data — too big for GitHub. The .gz version IS committed.
 docs/flights.json
-docs/flights.json.gz
 # Legacy uncompressed worker files — superseded by .json.gz
 docs/flights_0.json
 docs/flights_1.json
