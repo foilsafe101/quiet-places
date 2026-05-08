@@ -21,6 +21,15 @@ if [ -f "$PIDFILE" ]; then
   rm -f "$PIDFILE"
 fi
 
+# Belt-and-suspenders: refuse if any python query worker is alive,
+# even if the PID file is missing or stale (avoids overlap with OpenSky)
+if pgrep -f "query_opensky_paths" >/dev/null; then
+  echo "ERROR: a python query worker is already running. PIDs:"
+  pgrep -fl "query_opensky_paths"
+  echo "Stop it first."
+  exit 1
+fi
+
 echo $$ > "$PIDFILE"
 trap 'rm -f "$PIDFILE"; exit' INT TERM EXIT
 
