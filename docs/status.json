@@ -1,0 +1,33 @@
+{
+  "config": {
+    "total_slots": 302400,
+    "sample_interval_minutes": 12,
+    "regions": 30,
+    "weeks": 12
+  },
+  "progress": {
+    "completed": 87902,
+    "remaining": 214498,
+    "pct": 29.07
+  },
+  "rate": {
+    "per_hour": null,
+    "per_day": null,
+    "window_hours": 0
+  },
+  "eta": {
+    "days_remaining": null,
+    "estimated_finish": null
+  },
+  "current": {
+    "slot": "2025-03-06 16:00",
+    "region": "S Asia"
+  },
+  "last_update": "2026-05-08T17:00:17.723829+00:00",
+  "history": [
+    {
+      "ts": "2026-05-08T17:00:17.723829+00:00",
+      "count": 87902
+    }
+  ]
+}

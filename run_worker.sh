@@ -35,8 +35,9 @@ while true; do
   fi
 
   $VENV generate_quiet_overlay.py 2>&1 | tee -a "$LOG" || true
+  $VENV gen_status.py 2>&1 | tee -a "$LOG" || true
 
-  git add docs/flights_*.json docs/quiet_overlay.png query_progress_paths*.json 2>/dev/null || true
+  git add docs/flights_*.json docs/quiet_overlay.png docs/status.json docs/status.html query_progress_paths*.json 2>/dev/null || true
   SLOTS=$($VENV -c "
 import json, glob
 total = 0

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shhh — Status</title>
+  <style>
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #e8e4d9; color: #2c2820;
+      font-family: 'Georgia','Times New Roman',serif;
+      padding: 40px 32px; max-width: 720px; margin: 0 auto;
+    }
+    h1 { font-size: 20px; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; color: #3a3228; margin-bottom: 6px; }
+    .subtitle { font-size: 12px; color: #8a7e6e; letter-spacing: 0.04em; margin-bottom: 32px; }
+    a { color: #5a4e3e; }
+
+    .card { background: rgba(255,252,245,0.92); border: 0.5px solid rgba(0,0,0,0.12); border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .card-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #8a7e6e; margin-bottom: 10px; }
+    .big-number { font-size: 36px; font-weight: 400; color: #3a3228; line-height: 1; }
+    .big-number .unit { font-size: 14px; color: #8a7e6e; margin-left: 4px; letter-spacing: 0.04em; }
+
+    .progress-track { height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; margin: 14px 0 8px; overflow: hidden; }
+    .progress-fill { height: 100%; background: rgba(180,60,30,0.6); border-radius: 3px; transition: width 0.6s ease; }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: #5a4e3e; }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 12px; font-size: 11px; letter-spacing: 0.06em; }
+    .status-pill.running { background: rgba(80,150,80,0.15); color: #3a6e3a; }
+    .status-pill.idle    { background: rgba(180,140,60,0.15); color: #6e5a30; }
+    .status-pill.stopped { background: rgba(180,60,60,0.15); color: #7a3a3a; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .running .status-dot { background: #5a8a5a; animation: pulse 1.5s ease-in-out infinite; }
+    .idle    .status-dot { background: #b08a3a; }
+    .stopped .status-dot { background: #a04040; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 12px; }
+    dt { color: #8a7e6e; letter-spacing: 0.04em; }
+    dd { color: #3a3228; }
+
+    .footer { margin-top: 24px; font-size: 11px; color: #8a7e6e; letter-spacing: 0.04em; text-align: center; }
+    .err { color: #a04040; }
+  </style>
+</head>
+<body>
+  <h1>Shhh — Worker Status</h1>
+  <p class="subtitle">Live progress on flight-data collection from OpenSky Trino. <a href="./">← Back to map</a></p>
+
+  <div id="content">
+    <div class="card"><p class="err">Loading status…</p></div>
+  </div>
+
+  <p class="footer">Updates after each 200-slot batch. Refresh for the latest.</p>
+
+  <script>
+  function fmtPct(n)     { return n == null ? '—' : n.toFixed(1) + '%'; }
+  function fmtNum(n)     { return n == null ? '—' : n.toLocaleString(); }
+  function fmtDays(n)    { return n == null ? '—' : (n < 1 ? (n*24).toFixed(1)+'h' : n.toFixed(1)+'d'); }
+  function fmtDate(iso)  { return !iso ? '—' : new Date(iso).toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'}); }
+  function fmtAgo(iso) {
+    if (!iso) return '—';
+    const ms = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + 'm ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + 'h ago';
+    return Math.floor(hr / 24) + 'd ago';
+  }
+
+  function statusPill(lastUpdateIso) {
+    if (!lastUpdateIso) return { cls: 'stopped', label: 'NO DATA' };
+    const ageMin = (Date.now() - new Date(lastUpdateIso).getTime()) / 60000;
+    if (ageMin < 10)  return { cls: 'running', label: 'RUNNING' };
+    if (ageMin < 60)  return { cls: 'idle',    label: 'IDLE — between batches' };
+    return                   { cls: 'stopped', label: 'STOPPED' };
+  }
+
+  async function load() {
+    let s;
+    try {
+      const r = await fetch('status.json?t=' + Date.now());
+      if (!r.ok) throw new Error('status.json missing');
+      s = await r.json();
+    } catch (e) {
+      document.getElementById('content').innerHTML =
+        '<div class="card"><p class="err">Could not load status.json — worker may not have run yet.</p></div>';
+      return;
+    }
+
+    const pill = statusPill(s.last_update);
+    const eta  = s.eta?.estimated_finish;
+    const cur  = s.current || {};
+
+    document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="card-label">Status</div>
+        <div class="status-pill ${pill.cls}"><span class="status-dot"></span>${pill.label}</div>
+        <div style="margin-top:8px;font-size:11px;color:#8a7e6e">Last update ${fmtAgo(s.last_update)}.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Progress</div>
+        <div class="big-number">${fmtPct(s.progress.pct)}</div>
+        <div class="progress-track"><div class="progress-fill" style="width:${s.progress.pct}%"></div></div>
+        <div class="progress-meta">
+          <span>${fmtNum(s.progress.completed)} done</span>
+          <span>${fmtNum(s.progress.remaining)} remaining</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-label">Rate</div>
+          <div class="big-number">${fmtNum(s.rate.per_day)}<span class="unit">slots/day</span></div>
+          <div style="margin-top:8px;font-size:11px;color:#8a7e6e">Measured over last ${s.rate.window_hours}h</div>
+        </div>
+        <div class="card">
+          <div class="card-label">ETA</div>
+          <div class="big-number">${fmtDays(s.eta.days_remaining)}</div>
+          <div style="margin-top:8px;font-size:11px;color:#8a7e6e">Est. finish: ${fmtDate(eta)}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Currently querying</div>
+        <dl>
+          <dt>Slot</dt>     <dd>${cur.slot   || '—'}</dd>
+          <dt>Region</dt>   <dd>${cur.region || '—'}</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Configuration</div>
+        <dl>
+          <dt>Total slots</dt>      <dd>${fmtNum(s.config.total_slots)} (${s.config.weeks} weeks × ${s.config.regions} regions × ${s.config.sample_interval_minutes}-min sampling)</dd>
+          <dt>Sample weeks</dt>     <dd>1 week per month, Jan–Dec 2025</dd>
+          <dt>Source</dt>           <dd>OpenSky Network Trino historical DB</dd>
+        </dl>
+      </div>
+    `;
+  }
+
+  load();
+  setInterval(load, 60000); // refresh every minute
+  </script>
+</body>
+</html>
