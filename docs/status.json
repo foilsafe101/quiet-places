@@ -6,9 +6,9 @@
     "weeks": 12
   },
   "progress": {
-    "completed": 42002,
-    "remaining": 260398,
-    "pct": 13.89
+    "completed": 42202,
+    "remaining": 260198,
+    "pct": 13.96
   },
   "rate": {
     "per_hour": null,
@@ -20,10 +20,10 @@
     "estimated_finish": null
   },
   "current": {
-    "slot": "2025-01-07 11:12",
-    "region": "S Pacific Peru"
+    "slot": "2025-01-07 13:48",
+    "region": "S Pacific W"
   },
-  "last_update": "2026-05-08T20:44:19.273533+00:00",
+  "last_update": "2026-05-08T20:45:08.435380+00:00",
   "history": [
     {
       "ts": "2026-05-08T17:00:17.723829+00:00",
@@ -40,6 +40,10 @@
     {
       "ts": "2026-05-08T20:44:19.273533+00:00",
       "count": 42002
+    },
+    {
+      "ts": "2026-05-08T20:45:08.435380+00:00",
+      "count": 42202
     }
   ]
 }
