@@ -6,29 +6,25 @@
     "weeks": 12
   },
   "progress": {
-    "completed": 71602,
-    "remaining": 230798,
-    "pct": 23.68
+    "completed": 71802,
+    "remaining": 230598,
+    "pct": 23.74
   },
   "rate": {
-    "per_hour": 17237.5,
-    "per_day": 413700.0,
+    "per_hour": 17291.3,
+    "per_day": 414992.0,
     "window_hours": 0.3
   },
   "eta": {
     "days_remaining": 0.6,
-    "estimated_finish": "2026-05-09T14:56:17.034767+00:00"
+    "estimated_finish": "2026-05-09T14:53:45.799542+00:00"
   },
   "current": {
-    "slot": "2025-02-08 00:00",
-    "region": "C Africa Indian W"
+    "slot": "2025-02-08 01:36",
+    "region": "Southern Ocean NZ"
   },
-  "last_update": "2026-05-09T01:32:55.598126+00:00",
+  "last_update": "2026-05-09T01:33:36.003778+00:00",
   "history": [
-    {
-      "ts": "2026-05-09T01:16:54.902589+00:00",
-      "count": 67002
-    },
     {
       "ts": "2026-05-09T01:17:38.297898+00:00",
       "count": 67202
@@ -120,6 +116,10 @@
     {
       "ts": "2026-05-09T01:32:55.598126+00:00",
       "count": 71602
+    },
+    {
+      "ts": "2026-05-09T01:33:36.003778+00:00",
+      "count": 71802
     }
   ]
 }
