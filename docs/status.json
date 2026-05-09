@@ -6,29 +6,25 @@
     "weeks": 12
   },
   "progress": {
-    "completed": 88802,
-    "remaining": 213598,
-    "pct": 29.37
+    "completed": 89002,
+    "remaining": 213398,
+    "pct": 29.43
   },
   "rate": {
-    "per_hour": 2527.9,
-    "per_day": 60669.0,
-    "window_hours": 1.8
+    "per_hour": 2340.0,
+    "per_day": 56159.0,
+    "window_hours": 2.0
   },
   "eta": {
-    "days_remaining": 3.5,
-    "estimated_finish": "2026-05-12T17:11:10.223219+00:00"
+    "days_remaining": 3.8,
+    "estimated_finish": "2026-05-13T00:02:44.168844+00:00"
   },
   "current": {
     "slot": null,
     "region": null
   },
-  "last_update": "2026-05-09T04:41:18.760322+00:00",
+  "last_update": "2026-05-09T04:50:56.108934+00:00",
   "history": [
-    {
-      "ts": "2026-05-09T02:52:07.759239+00:00",
-      "count": 84202
-    },
     {
       "ts": "2026-05-09T02:52:59.111607+00:00",
       "count": 84402
@@ -120,6 +116,10 @@
     {
       "ts": "2026-05-09T04:41:18.760322+00:00",
       "count": 88802
+    },
+    {
+      "ts": "2026-05-09T04:50:56.108934+00:00",
+      "count": 89002
     }
   ]
 }
