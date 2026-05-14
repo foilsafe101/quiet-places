@@ -62,7 +62,10 @@ Mark approved these but wants to wait for better data coverage. Cron should noti
 ## Architecture decisions / declined options
 - **Cloud VM**: declined — running on Mark's Mac with `caffeinate -dims`
 - **Web Workers for rendering**: declined — canvas layer is fast enough
-- **Moving project to /Users/foil**: declined — moved instead to `/Users/Shared/shhh` (neutral, group-writable)
+- **Project location** (2026-04-25): moved from `/Users/markustribus/quiet-places` to `/Users/Shared/shhh`. Considered three options:
+  - `/Users/markustribus/shhh` — keeps it in Mark's home (natural for a personal project), but `foil` (the non-admin user Claude Code runs as) can't write to the parent, so cross-user operations need `sudo`.
+  - `/Users/foil/shhh` — simplest permissions but puts the project in a sandbox utility account's home; risk of losing it if `foil` ever gets reset, and it's outside Mark's Time Machine scope.
+  - `/Users/Shared/shhh` ✅ — neutral location, group-writable (foil:staff), both users can read/write without `sudo`, survives user resets.
 - **PMTiles tile-based rendering**: deferred — revisit if rendering slows again
 
 ## How to verify workers are running
