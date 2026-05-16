@@ -127,17 +127,17 @@
 <div class="panel" id="layers-panel">
   <button id="layers-close" aria-label="Close layers">×</button>
   <div class="layers-title">Layers</div>
-  <div class="layer-row"><label>Map</label><input type="range" id="sl-voyager"   min="0" max="100" value="100"></div>
-  <div class="layer-row"><label>Satellite</label><input type="range" id="sl-satellite" min="0" max="100" value="0"></div>
+  <div class="layer-row"><label>Satellite</label><input type="range" id="sl-satellite" min="0" max="100" value="100"></div>
+  <div class="layer-row">
+    <label style="display:flex;align-items:center;gap:5px;"><div class="flight-swatch"></div>Flights</label>
+    <input type="range" id="sl-flights" min="0" max="100" value="70">
+  </div>
+  <hr class="layer-divider" />
+  <div class="layer-row"><label>Map</label><input type="range" id="sl-voyager"   min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Topo</label><input type="range" id="sl-topo"      min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Dark</label><input type="range" id="sl-dark"      min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Roads/Rail</label><input type="range" id="sl-transport" min="0" max="100" value="0"></div>
   <div class="layer-row"><label>Quiet zones</label><input type="range" id="sl-quiet" min="0" max="100" value="0"></div>
-  <hr class="layer-divider" />
-  <div class="layer-row">
-    <label style="display:flex;align-items:center;gap:5px;"><div class="flight-swatch"></div>Flights</label>
-    <input type="range" id="sl-flights" min="0" max="100" value="0">
-  </div>
 </div>
 <div id="controls">
   <button class="ctrl-btn" id="zoom-in">+</button>
@@ -162,8 +162,8 @@ const map = L.map('map', { center: [35, 0], zoom: 3, zoomControl: false, attribu
 
 // Tile layers — all added at once, opacity controlled individually
 const tileLayers = {
-  voyager:   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', opacity: 1.0 }),
-  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0 }),
+  voyager:   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', opacity: 0 }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 1.0 }),
   topo:      L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', opacity: 0 }),
   dark:      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', opacity: 0 }),
   transport: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, opacity: 0 }),
@@ -205,18 +205,7 @@ const setFlightOpacity = () => {
 flightSlider.style.setProperty('--val', flightSlider.value + '%');
 setFlightOpacity();
 
-let flightDataLoaded = false;
-let flightDataLoading = false;
-flightSlider.addEventListener('input', async () => {
-  setFlightOpacity();
-  if (flightSlider.value > 0 && !flightDataLoaded && !flightDataLoading) {
-    flightDataLoading = true;
-    document.getElementById('data-info').textContent = 'Loading flights…';
-    await loadData();
-    flightDataLoaded = true;
-    flightDataLoading = false;
-  }
-});
+flightSlider.addEventListener('input', setFlightOpacity);
 
 L.control.attribution({ position: 'bottomleft', prefix: false })
   .addAttribution('© OpenStreetMap © CARTO · Shhh').addTo(map);
@@ -339,11 +328,13 @@ async function loadData() {
   }
 }
 
-// Hide loading overlay immediately — flight data loads on demand
+// Auto-load flight data on page load
 const overlay = document.getElementById('loading-overlay');
-overlay.classList.add('hidden');
-setTimeout(() => overlay.remove(), 600);
-document.getElementById('data-info').textContent = 'Flights off — drag slider to load';
+document.getElementById('data-info').textContent = 'Loading flights…';
+loadData().finally(() => {
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.remove(), 600);
+});
 
 // About modal — auto-show on first visit, reopen via title panel
 const aboutBackdrop = document.getElementById('about-backdrop');
