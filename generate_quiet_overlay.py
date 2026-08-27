@@ -19,11 +19,11 @@ FLIGHTS_FILE  = Path("docs/flights.json.gz")
 ROADS_ZIP     = Path("data/ne_10m_roads.zip")
 RAILS_ZIP     = Path("data/ne_10m_railroads.zip")
 
-RES = 0.25          # grid resolution in degrees (~28km at equator)
+RES = 0.1           # grid resolution in degrees (~11km at equator)
 
 # Acoustic thresholds in degrees (approximate great-circle)
-# Roads/rails audible ~1 mile (0.015°), jets ~20 miles (0.29°)
-NOISY_DEG_FLIGHTS = 0.29   # 20 miles
+# Roads/rails audible ~1 mile (0.015°), jets ~10 miles (0.145°)
+NOISY_DEG_FLIGHTS = 0.145  # 10 miles
 NOISY_DEG_ROADS   = 0.015  # ~1 mile
 QUIET_DEG         = 1.5    # beyond this → fully opaque
 
@@ -123,9 +123,9 @@ def main():
     mercy_max = lat_to_mercy(LAT_MAX)
     mercy_min = lat_to_mercy(LAT_MIN)
 
-    PPD    = 1.0 / RES                                          # pixels per degree = 4
-    width  = int((LON_MAX - LON_MIN) * PPD)                    # 1440
-    height = int((mercy_max - mercy_min) / (RES * math.pi / 180))  # ~1020
+    PPD    = 1.0 / RES                                          # pixels per degree = 10
+    width  = int((LON_MAX - LON_MIN) * PPD)                    # 3600
+    height = int((mercy_max - mercy_min) / (RES * math.pi / 180))  # ~2548
 
     print(f"Web Mercator grid: {width}×{height} = {width*height:,} pixels")
 
