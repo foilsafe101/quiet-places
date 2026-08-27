@@ -1,0 +1,209 @@
+name: OpenSky backfill
+
+# Finishes the historical OpenSky backfill unattended.
+#
+# A single Actions job is capped at 6 hours, which is not enough to finish the
+# remaining slots in one go, so each run works for a fixed time box, commits
+# whatever it finished, and exits. The schedule below starts the next run.
+# When no slots are left, every run exits immediately at the "pending" check,
+# so this costs nothing once the backfill is complete. shhh is a public repo,
+# so Actions minutes are free.
+
+on:
+  schedule:
+    # Every 3 hours. A run works for up to 5h, so the concurrency group below
+    # keeps exactly one run active and one queued behind it — the queue stays
+    # saturated without ever running two workers against OpenSky at once.
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      max_minutes:
+        description: "Minutes to spend querying before stopping and committing"
+        required: false
+        default: "300"
+      batch:
+        description: "Max slots to attempt (the time box usually stops it first)"
+        required: false
+        default: "20000"
+
+# Only ever one backfill worker at a time. This matters beyond avoiding push
+# races: OpenSky limits this account to 2 concurrent queries, and the previous
+# laptop setup was deliberately single-process.
+concurrency:
+  group: opensky-backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Preflight — verify imports and credentials
+        env:
+          # pyopensky resolves trino_username/trino_password from these. With
+          # both set it does a password-grant token exchange and uses
+          # JWTAuthentication; if either is missing it silently falls back to
+          # OAuth2Authentication, which tries to open a browser and hangs
+          # forever on a runner. That fallback is why this could not run
+          # unattended before, so fail loudly here rather than hang later.
+          OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
+          OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          import sys
+
+          # Overlay dependencies. generate_quiet_overlay.py *silently* skips
+          # roads and railroads if geopandas is missing, which would quietly
+          # regenerate the overlay as flights-only and commit it. Check up
+          # front, before spending hours querying.
+          import numpy, scipy, PIL, geopandas          # noqa: F401
+          from scipy.spatial import cKDTree            # noqa: F401
+
+          from pyopensky import config
+          if not config.trino_username or not config.trino_password:
+              sys.exit(
+                  "ERROR: OpenSky credentials did not resolve.\n"
+                  "Set the OPENSKY_USERNAME and OPENSKY_PASSWORD repository "
+                  "secrets. Without both, pyopensky falls back to browser "
+                  "OAuth and this job will hang."
+              )
+          print(f"Credentials resolved for user: {config.trino_username}")
+          PY
+
+      - name: Check whether any slots are pending
+        id: pending
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, pathlib, runpy
+
+          src = pathlib.Path("query_opensky_paths.py").read_text().split("def main()")[0]
+          ns = {"__file__": "query_opensky_paths.py"}
+          exec(src, ns)
+
+          keys = {s["key"] for s in ns["generate_schedule"]()}
+          done = set(json.load(open("query_progress_paths.json")).get("completed", []))
+          remaining = len(keys - done)
+
+          print(f"remaining={remaining}")
+          print(f"count={len(done)}")
+          print(f"total={len(keys)}")
+          PY
+
+      - name: Report status
+        run: |
+          echo "### OpenSky backfill" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Completed: ${{ steps.pending.outputs.count }} / ${{ steps.pending.outputs.total }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Remaining: ${{ steps.pending.outputs.remaining }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Query OpenSky
+        if: steps.pending.outputs.remaining != '0'
+        env:
+          OPENSKY_USERNAME: ${{ secrets.OPENSKY_USERNAME }}
+          OPENSKY_PASSWORD: ${{ secrets.OPENSKY_PASSWORD }}
+          MAX_MINUTES: ${{ github.event.inputs.max_minutes || '300' }}
+          BATCH: ${{ github.event.inputs.batch || '20000' }}
+        run: |
+          set -o pipefail
+          mkdir -p /tmp
+
+          # The script has no time limit of its own, so box it here. It saves
+          # progress and flight data atomically every 50 slots, so a stop mid
+          # batch costs at most 50 slots and cannot corrupt either file.
+          # Exit 124 means the time box expired, which is the normal outcome.
+          set +e
+          timeout "${MAX_MINUTES}m" \
+            python query_opensky_paths.py --batch "$BATCH" 2>&1 \
+            | tee /tmp/shhh-worker.log
+          rc=$?
+          set -e
+
+          if [ "$rc" -eq 124 ]; then
+            echo "Time box of ${MAX_MINUTES}m reached — stopping and committing."
+          elif [ "$rc" -ne 0 ]; then
+            echo "Query script exited with code $rc"
+            exit "$rc"
+          fi
+
+      - name: Regenerate status snapshot
+        if: always() && steps.pending.outputs.remaining != '0'
+        run: python gen_status.py
+
+      - name: Regenerate quiet overlay
+        if: always() && steps.pending.outputs.remaining != '0'
+        run: python generate_quiet_overlay.py
+
+      - name: Guard against GitHub's 100 MB file limit
+        if: always() && steps.pending.outputs.remaining != '0'
+        run: |
+          fail=0
+          for f in docs/flights.json.gz docs/flights_0.json.gz docs/flights_1.json.gz docs/quiet_overlay.png; do
+            [ -f "$f" ] || continue
+            bytes=$(stat -c%s "$f")
+            mb=$(( bytes / 1048576 ))
+            echo "$f — ${mb} MB"
+            if [ "$mb" -ge 90 ]; then
+              echo "::error::$f is ${mb} MB, at GitHub's 100 MB hard limit."
+              fail=1
+            elif [ "$mb" -ge 50 ]; then
+              echo "::warning::$f is ${mb} MB and approaching GitHub's 100 MB limit."
+            fi
+          done
+          exit "$fail"
+
+      - name: Commit and push
+        if: always() && steps.pending.outputs.remaining != '0'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add each path explicitly. The old run_worker.sh used the glob
+          # "docs/flights_*.json", which matches neither flights.json.gz nor
+          # flights_0.json.gz — so the flight data was never actually staged
+          # while the progress file was. Naming the files avoids repeating that.
+          git add --force \
+            docs/flights.json.gz \
+            docs/quiet_overlay.png \
+            docs/status.json \
+            query_progress_paths.json
+
+          if git diff --staged --quiet; then
+            echo "Nothing changed — not committing."
+            exit 0
+          fi
+
+          slots=$(python -c "import json;print(len(json.load(open('query_progress_paths.json'))['completed']))")
+          git commit -m "Backfill batch — ${slots} slots done"
+
+          branch="${GITHUB_REF_NAME}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:${branch}"; then
+              echo "Pushed on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Push failed (attempt ${attempt}). Rebasing on origin/${branch} and retrying."
+            git pull --rebase origin "${branch}" || {
+              echo "::error::Rebase hit a conflict. Re-run this workflow; it is idempotent."
+              exit 1
+            }
+            sleep $(( 2 ** attempt ))
+          done
+
+          echo "::error::Could not push after 5 attempts."
+          exit 1

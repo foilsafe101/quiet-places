@@ -1,2 +1,15 @@
+# Nightly live-flight fetch (fetch_flights.py)
 requests>=2.31.0
 
+# Historical backfill from the OpenSky Trino database
+# (query_opensky_paths.py). Needs OPENSKY_USERNAME / OPENSKY_PASSWORD in the
+# environment, otherwise it falls back to browser OAuth and hangs.
+pyopensky>=2.16
+
+# Quiet-zone overlay (generate_quiet_overlay.py).
+# geopandas is required, not optional: without it the script silently skips
+# roads and railroads and produces a flights-only overlay.
+numpy>=1.26
+scipy>=1.11
+pillow>=10.0
+geopandas>=1.0
